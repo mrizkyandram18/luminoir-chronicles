@@ -30,21 +30,23 @@ class _SetupScreenState extends State<SetupScreen> {
 
     // Verify Agent Status BEFORE entering the game
     final gatekeeper = context.read<GatekeeperService>();
-    final isActive = await gatekeeper.isChildAgentActive(
+    final result = await gatekeeper.isChildAgentActive(
       _parentIdController.text.trim(),
       _childIdController.text.trim(),
     );
 
     if (!mounted) return;
 
-    if (!isActive) {
+    if (!result.isSuccess) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Access Denied: Agent '${_childIdController.text}' not active or not found.",
+            "Access Denied [${result.resultCode.code}]\n"
+            "${result.displayMessage}",
           ),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
       return;

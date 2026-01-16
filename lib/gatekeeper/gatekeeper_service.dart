@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'gatekeeper_result.dart';
 
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
@@ -8,9 +9,13 @@ class GatekeeperService extends ChangeNotifier {
   bool get isSystemOnline => _isSystemOnline;
 
   /// Checks if the Child Agent is active.
+  /// Returns a GatekeeperResult with specific result code
   /// Path: users/{parentId}/children/{childId}
-  /// Field: details.lastSeen
-  Future<bool> isChildAgentActive(String parentId, String childId) async {
+  /// Field: lastSeen (root level) or details.lastSeen
+  Future<GatekeeperResult> isChildAgentActive(
+    String parentId,
+    String childId,
+  ) async {
     try {
       final docRef = FirebaseFirestore.instance
           .collection('users')
@@ -20,15 +25,24 @@ class GatekeeperService extends ChangeNotifier {
 
       final snapshot = await docRef.get();
 
+      // RC 01: User Not Found
       if (!snapshot.exists) {
         debugPrint(
-          "Gatekeeper: Child Agent document not found at $parentId/$childId",
+          "Gatekeeper [01]: Child Agent document not found at $parentId/$childId",
         );
-        return false;
+        return GatekeeperResult(
+          GatekeeperResultCode.userNotFound,
+          'Path: users/$parentId/children/$childId',
+        );
       }
 
       final data = snapshot.data();
-      if (data == null) return false;
+      if (data == null) {
+        return GatekeeperResult(
+          GatekeeperResultCode.userNotFound,
+          'Document exists but has no data',
+        );
+      }
 
       // Check root level first (based on screenshot), then fallback to details
       Timestamp? lastSeen = data['lastSeen'] as Timestamp?;
@@ -38,11 +52,12 @@ class GatekeeperService extends ChangeNotifier {
         lastSeen = details['lastSeen'] as Timestamp?;
       }
 
+      // RC 03: Missing lastSeen field
       if (lastSeen == null) {
         debugPrint(
-          "Gatekeeper: lastSeen field missing in ${snapshot.reference.path}",
+          "Gatekeeper [03]: lastSeen field missing in ${snapshot.reference.path}",
         );
-        return false;
+        return const GatekeeperResult(GatekeeperResultCode.missingLastSeen);
       }
 
       final lastSeenDate = lastSeen.toDate();
@@ -51,14 +66,25 @@ class GatekeeperService extends ChangeNotifier {
       // Active if seen within last 24 HOURS (Relaxed for testing)
       // Original: 5 minutes
       if (difference.inMinutes.abs() < 1440) {
-        return true;
+        // RC 00: Success
+        return const GatekeeperResult(GatekeeperResultCode.success);
       } else {
-        debugPrint("Gatekeeper: Agent inactive. Last seen: $difference ago.");
-        return false;
+        // RC 02: User Inactive
+        debugPrint(
+          "Gatekeeper [02]: Agent inactive. Last seen: $difference ago.",
+        );
+        return GatekeeperResult(
+          GatekeeperResultCode.userInactive,
+          'Last seen: ${difference.inHours} hours ago',
+        );
       }
     } catch (e) {
-      debugPrint("Gatekeeper Error: $e");
-      return false;
+      // RC 04: Connection Error
+      debugPrint("Gatekeeper [04]: $e");
+      return GatekeeperResult(
+        GatekeeperResultCode.connectionError,
+        e.toString(),
+      );
     }
   }
 

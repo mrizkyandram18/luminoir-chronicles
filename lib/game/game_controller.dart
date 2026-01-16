@@ -174,11 +174,11 @@ class GameController extends ChangeNotifier {
 
   Future<void> rollDice() async {
     // Phase 5: Check Gatekeeper
-    final isActive = await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
     );
-    if (!isActive) {
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return;
@@ -340,11 +340,11 @@ class GameController extends ChangeNotifier {
 
   Future<bool> buyUpgrade() async {
     // Phase 5: Check Gatekeeper
-    final isActive = await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
     );
-    if (!isActive) {
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return false;
@@ -374,10 +374,11 @@ class GameController extends ChangeNotifier {
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
     // Check Gatekeeper
-    if (!await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
-    )) {
+    );
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return;
@@ -410,10 +411,11 @@ class GameController extends ChangeNotifier {
   /// Cost is fixed 200 credits in this new model.
   Future<void> buyPropertyUpgrade(int tileId) async {
     // Check Gatekeeper
-    if (!await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
-    )) {
+    );
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return;
@@ -554,10 +556,11 @@ class GameController extends ChangeNotifier {
   /// Save the current game state manually
   Future<void> saveGame() async {
     // Check Gatekeeper
-    if (!await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
-    )) {
+    );
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return;
@@ -585,10 +588,11 @@ class GameController extends ChangeNotifier {
   /// Load the game state manually
   Future<void> loadGame() async {
     // Check Gatekeeper
-    if (!await _gatekeeper.isChildAgentActive(
+    final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
-    )) {
+    );
+    if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
       notifyListeners();
       return;
