@@ -71,4 +71,33 @@ class SupabaseService {
     // Also reset properties if we had a way to clear table or set owners to null
     // For now, MVP assumes manual cleanup or persistent world.
   }
+
+  /// Save Global Game State (Turn number, Deck, etc.)
+  /// For MVP, mainly saving 'currentPlayerIndex'.
+  Future<void> saveGameState(int currentPlayerIndex) async {
+    try {
+      await _client.from('game_state').upsert({
+        'id': 'current_session', // Single session for MVP
+        'current_player_index': currentPlayerIndex,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint("Supabase Error saving game state: $e");
+    }
+  }
+
+  /// Load Global Game State
+  Future<Map<String, dynamic>?> loadGameState() async {
+    try {
+      final response = await _client
+          .from('game_state')
+          .select()
+          .eq('id', 'current_session')
+          .maybeSingle();
+      return response;
+    } catch (e) {
+      debugPrint("Supabase Error loading game state: $e");
+      return null;
+    }
+  }
 }

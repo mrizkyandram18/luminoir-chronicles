@@ -529,4 +529,56 @@ class GameController extends ChangeNotifier {
 
     _lastEffectMessage = "EVENT: ${card.title}";
   }
+
+  /// Save the current game state manually
+  Future<void> saveGame() async {
+    // Check Gatekeeper
+    if (!await _gatekeeper.isChildAgentActive(_currentChildId)) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
+    // 1. Save all players
+    for (final p in _players) {
+      await _supabase.upsertPlayer(p);
+    }
+
+    // 2. Save all properties (Only owned ones)
+    for (final t in _tiles) {
+      if (t.ownerId != null) {
+        await _supabase.upsertProperty(t.id, t.ownerId!, t.upgradeLevel);
+      }
+    }
+
+    // 3. Save Global State
+    await _supabase.saveGameState(_currentPlayerIndex);
+
+    _lastEffectMessage = "Game Saved Successfully!";
+    notifyListeners();
+  }
+
+  /// Load the game state manually
+  Future<void> loadGame() async {
+    // Check Gatekeeper
+    if (!await _gatekeeper.isChildAgentActive(_currentChildId)) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
+    // 1. Load Global State
+    final gameState = await _supabase.loadGameState();
+    if (gameState != null) {
+      _currentPlayerIndex = gameState['current_player_index'] ?? 0;
+      if (_currentPlayerIndex >= _players.length) _currentPlayerIndex = 0;
+
+      _lastEffectMessage =
+          "Game Loaded! Player ${_currentPlayerIndex + 1}'s Turn.";
+    } else {
+      _lastEffectMessage = "No Saved Game Found.";
+    }
+
+    notifyListeners();
+  }
 }

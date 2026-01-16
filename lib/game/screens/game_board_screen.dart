@@ -18,6 +18,48 @@ class GameBoardScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // 0. Top Controls (Save/Load)
+            Container(
+              color: Colors.grey[900],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    icon: Icon(Icons.save, size: 16, color: Colors.blueGrey),
+                    label: Text(
+                      "SAVE",
+                      style: GoogleFonts.robotoMono(
+                        color: Colors.blueGrey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    onPressed: () {
+                      context.read<GameController>().saveGame();
+                    },
+                  ),
+                  const Gap(10),
+                  TextButton.icon(
+                    icon: Icon(
+                      Icons.download,
+                      size: 16,
+                      color: Colors.blueGrey,
+                    ),
+                    label: Text(
+                      "LOAD",
+                      style: GoogleFonts.robotoMono(
+                        color: Colors.blueGrey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    onPressed: () {
+                      context.read<GameController>().loadGame();
+                    },
+                  ),
+                ],
+              ),
+            ),
+
             // 1. Top Bar - Player Scores
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
