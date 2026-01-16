@@ -34,8 +34,14 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter.
 
 ### Phase 6: Online Multiplayer ☁️
 - **Supabase Realtime**: Game state (players, scores, positions) synced via Supabase.
-- **Listeners**: GameController subscribes to DB changes for a single source of truth.
-- **Serialization**: robust JSON support for Player models.
+- **Listeners**: `GameController` subscribes to DB changes for a single source of truth.
+- **Room Management**: Create and Join rooms via unique 4-character codes.
+
+### Phase 10: User Profiles & Specific Usernames 👤
+- **Specific Usernames**: Replaced generic "Player 1/2/3/4" with custom user-defined names.
+- **Firestore Sync**: User profiles (display names) are persisted in Firebase Firestore.
+- **Profile Hub**: Post-login `MainMenuScreen` allows editing names before starting a match.
+- **Simplified Login**: Hardcoded `parentId` for a faster, one-field entry flow.
 
 ## 🛠️ Tech Stack
 - **Framework**: Flutter (Web, Android, Windows)
@@ -72,6 +78,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter.
 - [x] Phase 4: Economy
 - [x] Phase 5: Gatekeeper (Real)
 - [x] Phase 6: Multiplayer (Online)
+- [x] Phase 10: User Profiles & Specific Usernames
 - [ ] Phase 7: Event Cards (Deck System)
 - [ ] Phase 8: Properties (Tycoon)
 - [ ] Phase 9: Save/Load
