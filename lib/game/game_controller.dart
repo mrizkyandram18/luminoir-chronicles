@@ -19,9 +19,9 @@ class GameController extends ChangeNotifier {
   // Phase 6: Supabase
   final SupabaseService _supabase = SupabaseService();
 
-  // Hardcoded ID for MVP - normally comes from Auth
-  final String _currentChildId = "test_agent_01";
-  final String _currentParentId = "test_parent_01";
+  // Hardcoded ID for MVP - matches user's Firestore screenshot
+  final String _currentChildId = "child1";
+  final String _currentParentId = "demoparent";
 
   // Total tiles on the board
   final int totalTiles = 20;
