@@ -114,8 +114,9 @@ class GatekeeperService extends ChangeNotifier {
           return;
         }
 
-        // Check isOnline field
-        final isOnline = data['isOnline'] as bool? ?? false;
+        // Check isOnline field from details map (matching production schema)
+        final details = data['details'] as Map<String, dynamic>?;
+        final isOnline = details?['isOnline'] as bool? ?? false;
         _isRealtimeActive = isOnline;
 
         debugPrint(
