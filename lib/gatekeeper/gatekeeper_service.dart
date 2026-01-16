@@ -64,7 +64,8 @@ class GatekeeperService extends ChangeNotifier {
 
   // Legacy/Mock status (kept for compatibility with Splash Screen)
   Future<void> checkStatus() async {
-    // In a real app, we might check Auth/Connectivity here
-    notifyListeners();
+    // Avoid notifyListeners() here (causes "setState during build" error on startup)
+    // Just wait a tick to simulate async check
+    await Future.delayed(Duration.zero);
   }
 }
