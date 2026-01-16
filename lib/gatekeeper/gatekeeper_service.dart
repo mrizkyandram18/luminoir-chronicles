@@ -102,6 +102,11 @@ class GatekeeperService extends ChangeNotifier {
     _realtimeListener = docRef.snapshots().listen(
       (snapshot) {
         if (!snapshot.exists) {
+          if (_isRealtimeActive) {
+            debugPrint(
+              "Gatekeeper [$childId]: Status changed → OFFLINE (doc not found)",
+            );
+          }
           _isRealtimeActive = false;
           notifyListeners();
           return;
@@ -109,6 +114,11 @@ class GatekeeperService extends ChangeNotifier {
 
         final data = snapshot.data();
         if (data == null) {
+          if (_isRealtimeActive) {
+            debugPrint(
+              "Gatekeeper [$childId]: Status changed → OFFLINE (no data)",
+            );
+          }
           _isRealtimeActive = false;
           notifyListeners();
           return;
@@ -117,15 +127,18 @@ class GatekeeperService extends ChangeNotifier {
         // Check isOnline field from details map (matching production schema)
         final details = data['details'] as Map<String, dynamic>?;
         final isOnline = details?['isOnline'] as bool? ?? false;
-        _isRealtimeActive = isOnline;
 
-        debugPrint(
-          "Gatekeeper Realtime: Agent ${isOnline ? 'ONLINE' : 'OFFLINE'}",
-        );
-        notifyListeners();
+        // Only log and notify if status actually changed
+        if (_isRealtimeActive != isOnline) {
+          debugPrint(
+            "Gatekeeper [$childId]: Status changed → ${isOnline ? 'ONLINE' : 'OFFLINE'}",
+          );
+          _isRealtimeActive = isOnline;
+          notifyListeners();
+        }
       },
       onError: (error) {
-        debugPrint("Gatekeeper Realtime Error: $error");
+        debugPrint("Gatekeeper [$childId] Error: $error");
         _isRealtimeActive = false;
         notifyListeners();
       },
