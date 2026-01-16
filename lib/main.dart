@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'gatekeeper/gatekeeper_service.dart';
 import 'gatekeeper/screens/access_denied_screen.dart';
@@ -24,9 +25,7 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcmtzc2ZoY3hsdmp6eWlndWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTE3NzcsImV4cCI6MjA4NDEyNzc3N30.svgZlN95pJEzRvh4RtOhL_1J99o4a21LrUiT72B8p-w',
   );
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-
-// ...
+  // ...
 
   // Initialize Firebase
   if (kIsWeb) {

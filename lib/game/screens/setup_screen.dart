@@ -88,21 +88,9 @@ class _SetupScreenState extends State<SetupScreen> {
                 style: GoogleFonts.robotoMono(color: Colors.white54),
               ),
               const Gap(30),
-              TextField(
-                controller: _parentIdController,
-                style: GoogleFonts.sourceCodePro(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: "Parent ID",
-                  labelStyle: TextStyle(color: Colors.cyanAccent),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.cyanAccent),
-                  ),
-                  prefixIcon: Icon(Icons.shield, color: Colors.white54),
-                ),
-              ),
+              // Parent ID is now hidden/static for privacy
+              // const Gap(16),
+              // TextField(controller: _parentIdController...),
               const Gap(16),
               TextField(
                 controller: _childIdController,
