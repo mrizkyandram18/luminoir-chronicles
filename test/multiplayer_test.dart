@@ -471,5 +471,20 @@ void main() {
       expect(result.resultCode, equals(GatekeeperResultCode.missingLastSeen));
       expect(result.resultCode.code, equals('03'));
     });
+
+    test(
+      'GatekeeperResult error names should be generic (no parent/child/agent)',
+      () {
+        // VERIFY: All result codes use generic naming via enum .name
+        expect(GatekeeperResultCode.userNotFound.name, equals('userNotFound'));
+        expect(GatekeeperResultCode.userInactive.name, equals('userInactive'));
+        expect(GatekeeperResultCode.success.code, isNotEmpty);
+        // Verify no enum contains "child" or "agent" in name
+        for (final code in GatekeeperResultCode.values) {
+          expect(code.name.toLowerCase().contains('child'), isFalse);
+          expect(code.name.toLowerCase().contains('agent'), isFalse);
+        }
+      },
+    );
   });
 }

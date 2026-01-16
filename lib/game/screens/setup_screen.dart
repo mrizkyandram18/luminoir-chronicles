@@ -161,7 +161,7 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
               const Gap(10),
               Text(
-                "Security Configuration",
+                "Login Configuration",
                 style: GoogleFonts.robotoMono(color: Colors.white54),
               ),
               const Gap(30),
@@ -173,7 +173,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 controller: _childIdController,
                 style: GoogleFonts.sourceCodePro(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: "Child Agent ID",
+                  labelText: "User ID",
                   labelStyle: TextStyle(color: Colors.cyanAccent),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.white24),

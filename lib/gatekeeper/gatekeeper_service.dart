@@ -33,9 +33,7 @@ class GatekeeperService extends ChangeNotifier {
 
       // RC 01: User Not Found
       if (!snapshot.exists) {
-        debugPrint(
-          "Gatekeeper [01]: Child Agent document not found at $parentId/$childId",
-        );
+        debugPrint("Gatekeeper [01]: User not found at $parentId/$childId");
         return const GatekeeperResult(GatekeeperResultCode.userNotFound);
       }
 
@@ -103,9 +101,7 @@ class GatekeeperService extends ChangeNotifier {
       (snapshot) {
         if (!snapshot.exists) {
           if (_isRealtimeActive) {
-            debugPrint(
-              "Gatekeeper [$childId]: Status changed → OFFLINE (doc not found)",
-            );
+            debugPrint("Gatekeeper [$childId]: OFFLINE (not found)");
           }
           _isRealtimeActive = false;
           notifyListeners();
@@ -115,9 +111,7 @@ class GatekeeperService extends ChangeNotifier {
         final data = snapshot.data();
         if (data == null) {
           if (_isRealtimeActive) {
-            debugPrint(
-              "Gatekeeper [$childId]: Status changed → OFFLINE (no data)",
-            );
+            debugPrint("Gatekeeper [$childId]: OFFLINE (no data)");
           }
           _isRealtimeActive = false;
           notifyListeners();
@@ -131,7 +125,7 @@ class GatekeeperService extends ChangeNotifier {
         // Only log and notify if status actually changed
         if (_isRealtimeActive != isOnline) {
           debugPrint(
-            "Gatekeeper [$childId]: Status changed → ${isOnline ? 'ONLINE' : 'OFFLINE'}",
+            "Gatekeeper [$childId]: ${isOnline ? 'ONLINE' : 'OFFLINE'}",
           );
           _isRealtimeActive = isOnline;
           notifyListeners();
