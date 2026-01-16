@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'gatekeeper_result.dart';
 
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
   final bool _isSystemOnline = true;
 
+  // Realtime monitoring
+  StreamSubscription<DocumentSnapshot>? _realtimeListener;
+  bool _isRealtimeActive = true;
+
   bool get isSystemOnline => _isSystemOnline;
+  bool get isRealtimeActive => _isRealtimeActive;
 
   /// Checks if the Child Agent is active.
   /// Returns a GatekeeperResult with specific result code
@@ -57,9 +63,9 @@ class GatekeeperService extends ChangeNotifier {
       final lastSeenDate = lastSeen.toDate();
       final difference = DateTime.now().difference(lastSeenDate);
 
-      // Active if seen within last 24 HOURS (Relaxed for testing)
-      // Original: 5 minutes
-      if (difference.inMinutes.abs() < 1440) {
+      // Active if seen within last 1 MINUTE (Strict realtime monitoring)
+      // If child stops service, they're locked out within 60 seconds
+      if (difference.inMinutes.abs() < 1) {
         // RC 00: Success
         return const GatekeeperResult(GatekeeperResultCode.success);
       } else {
@@ -82,10 +88,65 @@ class GatekeeperService extends ChangeNotifier {
     }
   }
 
+  /// Start realtime monitoring of child agent's online status
+  /// Listens to isOnline field changes in Firestore
+  void startRealtimeMonitoring(String parentId, String childId) {
+    stopRealtimeMonitoring(); // Clean up previous listener
+
+    final docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId);
+
+    _realtimeListener = docRef.snapshots().listen(
+      (snapshot) {
+        if (!snapshot.exists) {
+          _isRealtimeActive = false;
+          notifyListeners();
+          return;
+        }
+
+        final data = snapshot.data();
+        if (data == null) {
+          _isRealtimeActive = false;
+          notifyListeners();
+          return;
+        }
+
+        // Check isOnline field
+        final isOnline = data['isOnline'] as bool? ?? false;
+        _isRealtimeActive = isOnline;
+
+        debugPrint(
+          "Gatekeeper Realtime: Agent ${isOnline ? 'ONLINE' : 'OFFLINE'}",
+        );
+        notifyListeners();
+      },
+      onError: (error) {
+        debugPrint("Gatekeeper Realtime Error: $error");
+        _isRealtimeActive = false;
+        notifyListeners();
+      },
+    );
+  }
+
+  /// Stop realtime monitoring
+  void stopRealtimeMonitoring() {
+    _realtimeListener?.cancel();
+    _realtimeListener = null;
+  }
+
   // Legacy/Mock status (kept for compatibility with Splash Screen)
   Future<void> checkStatus() async {
     // Avoid notifyListeners() here (causes "setState during build" error on startup)
     // Just wait a tick to simulate async check
     await Future.delayed(Duration.zero);
+  }
+
+  @override
+  void dispose() {
+    stopRealtimeMonitoring();
+    super.dispose();
   }
 }

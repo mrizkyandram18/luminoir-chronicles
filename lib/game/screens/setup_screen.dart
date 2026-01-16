@@ -52,6 +52,12 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
+    // ✅ Login successful - Start realtime monitoring
+    gatekeeper.startRealtimeMonitoring(
+      _parentIdController.text.trim(),
+      _childIdController.text.trim(),
+    );
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
