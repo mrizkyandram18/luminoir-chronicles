@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'gatekeeper/gatekeeper_service.dart';
 import 'gatekeeper/screens/access_denied_screen.dart';
@@ -18,12 +19,13 @@ void main() async {
   // Initialize Supabase
   // TODO: Replace with your actual Supabase URL and Anon Key
   await Supabase.initialize(
-    url: 'https://PLACEHOLDER_URL.supabase.co',
-    anonKey: 'PLACEHOLDER_ANON_KEY',
+    url: 'https://hmrkssfhcxlvjzyigufd.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcmtzc2ZoY3hsdmp6eWlndWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTE3NzcsImV4cCI6MjA4NDEyNzc3N30.svgZlN95pJEzRvh4RtOhL_1J99o4a21LrUiT72B8p-w',
   );
 
-  // TODO: Initialize Firebase here (uncomment when ready)
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Initialize Firebase (Using google-services.json on Android)
+  await Firebase.initializeApp();
 
   runApp(
     MultiProvider(
