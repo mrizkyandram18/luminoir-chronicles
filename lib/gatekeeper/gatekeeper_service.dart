@@ -30,18 +30,12 @@ class GatekeeperService extends ChangeNotifier {
         debugPrint(
           "Gatekeeper [01]: Child Agent document not found at $parentId/$childId",
         );
-        return GatekeeperResult(
-          GatekeeperResultCode.userNotFound,
-          'Path: users/$parentId/children/$childId',
-        );
+        return const GatekeeperResult(GatekeeperResultCode.userNotFound);
       }
 
       final data = snapshot.data();
       if (data == null) {
-        return GatekeeperResult(
-          GatekeeperResultCode.userNotFound,
-          'Document exists but has no data',
-        );
+        return const GatekeeperResult(GatekeeperResultCode.userNotFound);
       }
 
       // Check root level first (based on screenshot), then fallback to details
