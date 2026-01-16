@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
-  bool _isSystemOnline = true;
+  final bool _isSystemOnline = true;
 
   bool get isSystemOnline => _isSystemOnline;
 

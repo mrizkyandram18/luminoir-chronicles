@@ -173,7 +173,9 @@ class GameBoardScreen extends StatelessWidget {
                               tileColor = Colors.amberAccent;
                               break;
                             default:
-                              tileColor = Colors.cyanAccent.withOpacity(0.3);
+                              tileColor = Colors.cyanAccent.withValues(
+                                alpha: 0.3,
+                              );
                           }
 
                           // Determine Owner Border
@@ -183,8 +185,8 @@ class GameBoardScreen extends StatelessWidget {
                               orElse: () => controller.players[0], // Fallback
                             );
                             borderColor = owner.color;
-                            tileColor = owner.color.withOpacity(
-                              0.2,
+                            tileColor = owner.color.withValues(
+                              alpha: 0.2,
                             ); // Tint tile with owner color
                           }
 
@@ -194,7 +196,7 @@ class GameBoardScreen extends StatelessWidget {
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
+                                color: Colors.black.withValues(alpha: 0.8),
                                 border: Border.all(
                                   color: tile.ownerId != null
                                       ? borderColor
@@ -208,7 +210,7 @@ class GameBoardScreen extends StatelessWidget {
                                         (tile.ownerId != null
                                                 ? borderColor
                                                 : tileColor)
-                                            .withOpacity(0.3),
+                                            .withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),

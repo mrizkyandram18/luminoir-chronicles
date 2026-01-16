@@ -513,8 +513,9 @@ class GameController extends ChangeNotifier {
   }
 
   void _handleEventCardLanding() {
-    if (_eventDeck.isEmpty)
+    if (_eventDeck.isEmpty) {
       _generateEventDeck(); // Reshuffle if needed (shouldn't be empty)
+    }
 
     final card = _eventDeck.removeAt(0);
     _eventDeck.add(card); // Cycle to bottom
