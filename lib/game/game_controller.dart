@@ -194,27 +194,61 @@ class GameController extends ChangeNotifier {
     });
   }
 
+  bool buyUpgrade() {
+    // Basic Upgrade: Cost 200, adds +1 to Multiplier
+    const int upgradeCost = 200;
+
+    if (currentPlayer.credits >= upgradeCost) {
+      currentPlayer.credits -= upgradeCost;
+      currentPlayer.scoreMultiplier += 1;
+      _lastEffectMessage =
+          "${currentPlayer.name} Upgraded! Multiplier now x${currentPlayer.scoreMultiplier}!";
+      notifyListeners();
+      return true;
+    } else {
+      _lastEffectMessage = "Insufficient Funds! Need 200 Credits.";
+      notifyListeners();
+      return false;
+    }
+  }
+
   void _handleTileLanding() {
     final currentTile = _tiles[currentPlayer.position];
+    final int multiplier = currentPlayer.scoreMultiplier;
 
     switch (currentTile.type) {
       case TileType.start:
-        currentPlayer.score += currentTile.value;
+        currentPlayer.score += (200 * multiplier);
+        currentPlayer.credits += 100;
         _lastEffectMessage =
-            "${currentPlayer.name} Passed Go! +${currentTile.value}";
+            "Passed Go! +${200 * multiplier} Score, +100 Credits";
         break;
       case TileType.reward:
-        currentPlayer.score += currentTile.value;
+        currentPlayer.score += (50 * multiplier);
+        currentPlayer.credits += 50;
         _lastEffectMessage =
-            "${currentPlayer.name} found Data Cache! +${currentTile.value}";
+            "Data Cache! +${50 * multiplier} Score, +50 Credits";
         break;
       case TileType.penalty:
-        currentPlayer.score += currentTile.value; // value is negative
-        _lastEffectMessage =
-            "${currentPlayer.name} hit Firewall! ${currentTile.value}";
+        // Penalties usually don't get multiplied benefits, but let's keep it raw for now.
+        // Or maybe penalties are reduced by upgrades? For now, raw.
+        currentPlayer.score += (-50); // Score can go down
+        currentPlayer.credits = max(
+          0,
+          currentPlayer.credits - 50,
+        ); // Credits min 0
+        _lastEffectMessage = "Firewall Hit! -50 Score, -50 Credits";
         break;
       case TileType.event:
-        _lastEffectMessage = "${currentPlayer.name} Scan... Safe.";
+        // Simple random event for MVP
+        final isGood = Random().nextBool();
+        if (isGood) {
+          currentPlayer.credits += 100;
+          _lastEffectMessage = "Lucky Hash! +100 Credits";
+        } else {
+          currentPlayer.credits = max(0, currentPlayer.credits - 50);
+          _lastEffectMessage = "Power Surge! -50 Credits";
+        }
         break;
       case TileType.neutral:
         // No effect

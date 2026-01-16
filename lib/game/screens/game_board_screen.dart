@@ -55,6 +55,14 @@ class GameBoardScreen extends StatelessWidget {
                               fontSize: 16,
                             ),
                           ),
+                          Text(
+                            '\$${player.credits}',
+                            style: GoogleFonts.sourceCodePro(
+                              color: Colors.yellowAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -65,12 +73,12 @@ class GameBoardScreen extends StatelessWidget {
 
             // 2. Turn Indicator
             Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 10),
+              padding: const EdgeInsets.only(top: 5, bottom: 5),
               child: Text(
                 "${controller.currentPlayer.name}'s Turn",
                 style: GoogleFonts.orbitron(
                   color: controller.currentPlayer.color,
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(
@@ -141,14 +149,29 @@ class GameBoardScreen extends StatelessWidget {
                                 ],
                               ),
                               child: Center(
-                                child: Text(
-                                  tile.label,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.robotoMono(
-                                    color: tileColor,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      tile.label,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.robotoMono(
+                                        color: tileColor,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    // Optional: Show value if not Start
+                                    if (tile.value != 0 &&
+                                        tile.type != TileType.start)
+                                      Text(
+                                        "${tile.value > 0 ? '+' : ''}${tile.value}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -198,7 +221,7 @@ class GameBoardScreen extends StatelessWidget {
 
             // 4. Bottom Controls
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
               decoration: BoxDecoration(
                 color: Colors.black87,
                 border: Border(
@@ -211,32 +234,67 @@ class GameBoardScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Upgrade Button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[900],
+                      foregroundColor: Colors.yellowAccent,
+                      side: BorderSide(color: Colors.yellowAccent),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 15,
+                      ),
+                    ),
+                    onPressed: () {
+                      final game = context.read<GameController>();
+                      game.buyUpgrade();
+                    },
+                    child: Column(
+                      children: [
+                        Text(
+                          "UPGRADE",
+                          style: GoogleFonts.robotoMono(fontSize: 10),
+                        ),
+                        Text(
+                          "\$200",
+                          style: GoogleFonts.orbitron(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Gap(20),
+
+                  // Roll Stats
                   Column(
                     children: [
                       Text(
                         'ROLLED',
                         style: GoogleFonts.roboto(
                           color: Colors.white54,
-                          fontSize: 12,
+                          fontSize: 10,
                         ),
                       ),
                       Text(
                         '${controller.diceRoll}',
                         style: GoogleFonts.orbitron(
                           color: controller.currentPlayer.color,
-                          fontSize: 40,
+                          fontSize: 30,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const Gap(40),
+                  const Gap(20),
+
+                  // Roll Button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: controller.currentPlayer.color,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
+                        horizontal: 30,
                         vertical: 20,
                       ),
                     ),
@@ -260,9 +318,9 @@ class GameBoardScreen extends StatelessWidget {
                       }
                     },
                     child: Text(
-                      'ROLL DICE',
+                      'ROLL',
                       style: GoogleFonts.orbitron(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

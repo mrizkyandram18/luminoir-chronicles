@@ -6,6 +6,8 @@ class Player {
   final Color color;
   int position;
   int score;
+  int credits;
+  int scoreMultiplier;
   final bool isHuman;
 
   Player({
@@ -14,6 +16,8 @@ class Player {
     required this.color,
     this.position = 0,
     this.score = 100,
+    this.credits = 500, // Starting credits
+    this.scoreMultiplier = 1, // Default multiplier
     this.isHuman = true,
   });
 }
