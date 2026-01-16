@@ -1,10 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'models/tile_model.dart';
+import 'models/player_model.dart';
 
 class GameController extends ChangeNotifier {
-  int _playerIndex = 0; // Current tile index (0-based)
+  // Phase 3: Multiplayer State
+  final List<Player> _players = [];
+  int _currentPlayerIndex = 0;
+
   int _diceRoll = 0; // Last dice roll result
+  String? _lastEffectMessage;
 
   // Total tiles on the board
   final int totalTiles = 20;
@@ -14,31 +19,47 @@ class GameController extends ChangeNotifier {
 
   // Phase 2: Tile Logic
   late final List<Tile> _tiles;
-  int _score = 100; // Start with 100 credits
-  String? _lastEffectMessage;
 
   GameController() {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
+    _initializePlayers();
   }
 
-  int get playerIndex => _playerIndex;
+  // Getters
+  List<Player> get players => _players;
+  Player get currentPlayer => _players[_currentPlayerIndex];
+
+  // This is now purely for the "Last Rolled" display, logic uses currentPlayer position
   int get diceRoll => _diceRoll;
-  int get score => _score;
+  int get currentPlayerIndex => _currentPlayerIndex; // For UI highlighting
+
   String? get lastEffectMessage => _lastEffectMessage;
   List<Tile> get tiles => _tiles;
 
   // Expose the calculated path for the UI to render tiles
   List<Alignment> get boardPath => _boardPath;
 
-  Alignment get currentAlignment => _boardPath[_playerIndex];
+  Alignment getPlayerAlignment(Player p) => _boardPath[p.position];
+
+  void _initializePlayers() {
+    _players.clear();
+    _players.add(Player(id: 'p1', name: 'Player 1', color: Colors.cyanAccent));
+    _players.add(
+      Player(id: 'p2', name: 'Player 2', color: Colors.purpleAccent),
+    );
+    _players.add(
+      Player(id: 'p3', name: 'Player 3', color: Colors.orangeAccent),
+    );
+    _players.add(Player(id: 'p4', name: 'Player 4', color: Colors.greenAccent));
+  }
 
   Future<void> rollDice() async {
     _lastEffectMessage = null; // Clear previous message
     notifyListeners();
 
     _diceRoll = Random().nextInt(6) + 1; // 1-6
-    _movePlayer(_diceRoll);
+    _moveCurrentPlayer(_diceRoll);
     notifyListeners();
 
     // Wait for animation to finish (approx matching UI duration)
@@ -46,10 +67,24 @@ class GameController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 600));
 
     _handleTileLanding();
+
+    // Auto specific delay before next turn? Or just let user click?
+    // User request: "nextTurn() to move to next player".
+    // Let's create a separate method for nextTurn if needed, but for MVP
+    // we can auto-advance or just leave the state ready for next click.
+    // Let's NOT auto-advance instantly so they can see the effect.
+    // But then the button needs to change to "END TURN" or we just update index.
+    // Simpler: Just update index now so next click is next player.
+    _nextTurn();
   }
 
-  void _movePlayer(int steps) {
-    _playerIndex = (_playerIndex + steps) % totalTiles;
+  void _moveCurrentPlayer(int steps) {
+    currentPlayer.position = (currentPlayer.position + steps) % totalTiles;
+  }
+
+  void _nextTurn() {
+    _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
+    notifyListeners();
   }
 
   /// Generates a list of Alignments forming a rectangular loop (20 tiles).
@@ -160,23 +195,26 @@ class GameController extends ChangeNotifier {
   }
 
   void _handleTileLanding() {
-    final currentTile = _tiles[_playerIndex];
+    final currentTile = _tiles[currentPlayer.position];
 
     switch (currentTile.type) {
       case TileType.start:
-        _score += currentTile.value;
-        _lastEffectMessage = "Passed Go! +${currentTile.value}";
+        currentPlayer.score += currentTile.value;
+        _lastEffectMessage =
+            "${currentPlayer.name} Passed Go! +${currentTile.value}";
         break;
       case TileType.reward:
-        _score += currentTile.value;
-        _lastEffectMessage = "Data Cache Found! +${currentTile.value}";
+        currentPlayer.score += currentTile.value;
+        _lastEffectMessage =
+            "${currentPlayer.name} found Data Cache! +${currentTile.value}";
         break;
       case TileType.penalty:
-        _score += currentTile.value; // value is negative
-        _lastEffectMessage = "Hit Firewall! ${currentTile.value}";
+        currentPlayer.score += currentTile.value; // value is negative
+        _lastEffectMessage =
+            "${currentPlayer.name} hit Firewall! ${currentTile.value}";
         break;
       case TileType.event:
-        _lastEffectMessage = "System Scan... Safe.";
+        _lastEffectMessage = "${currentPlayer.name} Scan... Safe.";
         break;
       case TileType.neutral:
         // No effect

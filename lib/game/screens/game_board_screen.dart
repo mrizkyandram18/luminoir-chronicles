@@ -15,241 +15,263 @@ class GameBoardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // 1. The Board Image (Centered)
-          Center(
-            child: AspectRatio(
-              aspectRatio: 1.0,
-              child: Container(
-                margin: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(
-                      'assets/images/board/isometric_board.png',
-                    ),
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                // 2. The Token (Overlay on top of board)
-                child: Stack(
-                  children: [
-                    // A. Render the 20 Tiles visual
-                    // We iterate through the generated path points and place a visual "Tile" at each.
-                    ...List.generate(controller.tiles.length, (index) {
-                      final tile = controller.tiles[index];
-                      Color tileColor;
-                      switch (tile.type) {
-                        case TileType.reward:
-                          tileColor = Colors.greenAccent;
-                          break;
-                        case TileType.penalty:
-                          tileColor = Colors.redAccent;
-                          break;
-                        case TileType.event:
-                          tileColor = Colors.purpleAccent;
-                          break;
-                        case TileType.start:
-                          tileColor = Colors.white;
-                          break;
-                        default:
-                          tileColor = Colors.cyanAccent;
-                      }
-
-                      return Align(
-                        alignment: controller.boardPath[index],
-                        child: Container(
-                          width: 60, // Requested 60x60
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(
-                              alpha: 0.6,
-                            ), // Darker background
-                            border: Border.all(
-                              color: tileColor, // Tile Type color
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              8,
-                            ), // Slightly rounded
-                            boxShadow: [
-                              BoxShadow(
-                                color: tileColor.withValues(
-                                  alpha: 0.2,
-                                ), // Glow matches type
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              tile.label,
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.robotoMono(
-                                color: tileColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. Top Bar - Player Scores
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: Colors.black54,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: controller.players.map((player) {
+                  final isActive = controller.currentPlayer.id == player.id;
+                  return AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: isActive ? 1.0 : 0.5,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: isActive
+                          ? BoxDecoration(
+                              border: Border.all(color: player.color, width: 2),
+                              borderRadius: BorderRadius.circular(8),
+                              color: player.color.withValues(alpha: 0.1),
+                            )
+                          : null,
+                      child: Column(
+                        children: [
+                          Text(
+                            player.name,
+                            style: GoogleFonts.robotoMono(
+                              color: player.color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      );
-                    }),
-
-                    // B. The Token (Overlay on top of tiles)
-                    AnimatedAlign(
-                      duration: const Duration(
-                        milliseconds: 300,
-                      ), // Snappier movement
-                      curve: Curves.easeOutBack, // Bouncy feel
-                      alignment: controller.currentAlignment,
-                      child: Container(
-                        width: 40, // Token smaller than tile to fit inside
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.redAccent,
-                              blurRadius: 15,
-                              spreadRadius: 2,
+                          Text(
+                            '${player.score}',
+                            style: GoogleFonts.orbitron(
+                              color: Colors.white,
+                              fontSize: 16,
                             ),
-                          ],
-                          gradient: RadialGradient(
-                            colors: [Colors.white, Colors.redAccent],
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.flight,
-                          color: Colors.black,
-                          size: 24,
-                        ), // Drone icon
+                        ],
                       ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // 2. Turn Indicator
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 10),
+              child: Text(
+                "${controller.currentPlayer.name}'s Turn",
+                style: GoogleFonts.orbitron(
+                  color: controller.currentPlayer.color,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      color: controller.currentPlayer.color,
+                      blurRadius: 10,
                     ),
                   ],
                 ),
               ),
             ),
-          ),
 
-          // 3. HUD / Controls (Overlay on top of everything)
-          SafeArea(
-            child: Column(
-              children: [
-                // Top Bar
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Cyber Tycoon',
-                        style: GoogleFonts.orbitron(
-                          color: Colors.cyanAccent,
-                          fontSize: 18,
+            // 3. The Board (Expanded to fit remaining space)
+            Expanded(
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Container(
+                    margin: const EdgeInsets.all(8), // Small margin
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(
+                          'assets/images/board/isometric_board.png',
                         ),
+                        fit: BoxFit.contain,
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            'SCORE',
-                            style: GoogleFonts.robotoMono(
-                              color: Colors.white70,
-                              fontSize: 10,
-                            ),
-                          ),
-                          Text(
-                            '${controller.score}',
-                            style: GoogleFonts.orbitron(
-                              color: Colors.yellowAccent,
-                              fontSize: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                // Bottom Controls
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    border: Border(
-                      top: BorderSide(color: Colors.cyanAccent, width: 2),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            'ROLLED',
-                            style: GoogleFonts.roboto(
-                              color: Colors.white54,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            '${controller.diceRoll}',
-                            style: GoogleFonts.orbitron(
-                              color: Colors.cyanAccent,
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Gap(40),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.cyan,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 20,
-                          ),
-                        ),
-                        onPressed: () async {
-                          final game = context.read<GameController>();
-                          await game.rollDice();
+                    child: Stack(
+                      children: [
+                        // A. Render the 20 Tiles visual
+                        ...List.generate(controller.tiles.length, (index) {
+                          final tile = controller.tiles[index];
+                          Color tileColor;
+                          switch (tile.type) {
+                            case TileType.reward:
+                              tileColor = Colors.greenAccent;
+                              break;
+                            case TileType.penalty:
+                              tileColor = Colors.redAccent;
+                              break;
+                            case TileType.event:
+                              tileColor = Colors.purpleAccent;
+                              break;
+                            case TileType.start:
+                              tileColor = Colors.white;
+                              break;
+                            default:
+                              tileColor = Colors.cyanAccent;
+                          }
 
-                          if (context.mounted &&
-                              game.lastEffectMessage != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  game.lastEffectMessage!,
+                          return Align(
+                            alignment: controller.boardPath[index],
+                            child: Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                border: Border.all(
+                                  color: tileColor,
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: tileColor.withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  tile.label,
+                                  textAlign: TextAlign.center,
                                   style: GoogleFonts.robotoMono(
-                                    color: Colors.black,
+                                    color: tileColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                backgroundColor: Colors.cyanAccent,
-                                duration: const Duration(seconds: 1),
                               ),
-                            );
-                          }
-                        },
-                        child: Text(
-                          'ROLL DICE',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            ),
+                          );
+                        }),
+
+                        // B. The Tokens
+                        ...controller.players.map((player) {
+                          return AnimatedAlign(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutBack,
+                            alignment: controller.getPlayerAlignment(player),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: player.color.withValues(alpha: 0.8),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                                gradient: RadialGradient(
+                                  colors: [Colors.white, player.color],
+                                ),
+                                border: controller.currentPlayer.id == player.id
+                                    ? Border.all(color: Colors.white, width: 3)
+                                    : null,
+                              ),
+                              child: Icon(
+                                Icons.flight,
+                                color: Colors.black,
+                                size: 24,
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 4. Bottom Controls
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                border: Border(
+                  top: BorderSide(
+                    color: controller.currentPlayer.color,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'ROLLED',
+                        style: GoogleFonts.roboto(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '${controller.diceRoll}',
+                        style: GoogleFonts.orbitron(
+                          color: controller.currentPlayer.color,
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const Gap(40),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: controller.currentPlayer.color,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 20,
+                      ),
+                    ),
+                    onPressed: () async {
+                      final game = context.read<GameController>();
+                      await game.rollDice();
+
+                      if (context.mounted && game.lastEffectMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              game.lastEffectMessage!,
+                              style: GoogleFonts.robotoMono(
+                                color: Colors.black,
+                              ),
+                            ),
+                            backgroundColor: game.currentPlayer.color,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(
+                      'ROLL DICE',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
