@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'models/tile_model.dart';
 import 'models/player_model.dart';
+import 'models/event_card_model.dart';
 import '../gatekeeper/gatekeeper_service.dart';
 import 'supabase_service.dart';
 
@@ -30,9 +31,14 @@ class GameController extends ChangeNotifier {
   // Phase 2: Tile Logic
   late final List<Tile> _tiles;
 
+  // Phase 7: Events & Properties
+  final List<EventCard> _eventDeck = [];
+  EventCard? _currentEventCard;
+
   GameController(this._gatekeeper) {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
+    _generateEventDeck();
 
     // Create default players in memory for initial setup if needed
     final defaultPlayers = _createDefaultPlayers();
@@ -40,7 +46,7 @@ class GameController extends ChangeNotifier {
     // Initialize DB if empty
     _supabase.initializeDefaultPlayersIfNeeded(defaultPlayers);
 
-    // Subscribe to stream
+    // Subscribe to Players stream
     _supabase.getPlayersStream().listen((updatedPlayers) {
       if (updatedPlayers.isNotEmpty) {
         // Assume sorted by ID from service
@@ -49,11 +55,77 @@ class GameController extends ChangeNotifier {
       }
     });
 
+    // Subscribe to Properties stream
+    _supabase.getPropertiesStream().listen((propertiesData) {
+      for (var data in propertiesData) {
+        final int tileId = data['tile_id'];
+        final String ownerId = data['owner_id'];
+
+        // Find local tile and update owner
+        // Since tiles is List<Tile> and ID matches index in our generation logic...
+        if (tileId >= 0 && tileId < _tiles.length) {
+          _tiles[tileId] = _tiles[tileId].copyWith(ownerId: ownerId);
+        }
+      }
+      notifyListeners();
+    });
+
     // Initial local population to avoid empty screen before first stream event
     if (_players.isEmpty) {
       _players = defaultPlayers;
     }
   }
+
+  void _generateEventDeck() {
+    _eventDeck.addAll([
+      const EventCard(
+        id: 'e1',
+        title: 'IPO Launch',
+        description: 'Your startup goes public!',
+        type: EventCardType.gainCredits,
+        value: 200,
+      ),
+      const EventCard(
+        id: 'e2',
+        title: 'Ransomware',
+        description: 'Pay to unlock your data.',
+        type: EventCardType.loseCredits,
+        value: 100,
+      ),
+      const EventCard(
+        id: 'e3',
+        title: 'Server Crash',
+        description: 'Maintenance required.',
+        type: EventCardType.loseCredits,
+        value: 50,
+      ),
+      const EventCard(
+        id: 'e4',
+        title: 'Zero Day Exploit',
+        description: 'You found a vulnerability!',
+        type: EventCardType.gainCredits,
+        value: 150,
+      ),
+      const EventCard(
+        id: 'e5',
+        title: 'Wormhole',
+        description: 'Fast travel through the net.',
+        type: EventCardType.moveForward,
+        value: 3,
+      ),
+      const EventCard(
+        id: 'e6',
+        title: 'Lag Spike',
+        description: 'Connection unstable. Fall back.',
+        type: EventCardType.moveBackward,
+        value: 2,
+      ),
+    ]);
+    _eventDeck.shuffle();
+  }
+
+  // Getters
+  EventCard? get currentEventCard => _currentEventCard;
 
   List<Player> _createDefaultPlayers() {
     return [
@@ -216,8 +288,7 @@ class GameController extends ChangeNotifier {
         );
       }
 
-      // Every 7th tile is a PENALTY (overrides reward if conflict? 35 is div by 5 and 7.. but we only go up to 20 so no conflict)
-      // actually 7, 14.
+      // Every 7th tile is a PENALTY
       if (index % 7 == 0) {
         return Tile(
           id: index,
@@ -227,12 +298,20 @@ class GameController extends ChangeNotifier {
         );
       }
 
-      // Random Event
+      // Event Tiles
       if (index == 3 || index == 12 || index == 18) {
         return Tile(id: index, type: TileType.event, label: 'EVENT', value: 0);
       }
 
-      return Tile(id: index, type: TileType.neutral, label: '$index');
+      // Properties: Indices 1, 2, 4, 6, 8, 9, 11, 13, 16, 17, 19
+      // We will make any neutral tile a property for now.
+      return Tile(
+        id: index,
+        type: TileType.property,
+        label: 'NODE #$index',
+        value: 100 + (index * 10), // Price varries
+        rent: 20 + (index * 2), // Rent varies
+      );
     });
   }
 
@@ -266,9 +345,43 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  /// Buy a property the player is currently on or specified by ID
+  Future<void> buyProperty(int tileId) async {
+    // Check Gatekeeper
+    if (!await _gatekeeper.isChildAgentActive(_currentChildId)) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
+    final tile = _tiles[tileId];
+    if (tile.type != TileType.property || tile.ownerId != null) return;
+
+    if (currentPlayer.credits >= tile.value) {
+      currentPlayer.credits -= tile.value;
+      _lastEffectMessage = "${currentPlayer.name} purchased ${tile.label}!";
+
+      // Update local state implicitly handled by stream?
+      // Better to update locally optimistically
+      _tiles[tileId] = _tiles[tileId].copyWith(ownerId: currentPlayer.id);
+
+      notifyListeners();
+
+      // Sync Player (Credits) and Property (Owner)
+      await _supabase.upsertPlayer(currentPlayer);
+      await _supabase.upsertProperty(tileId, currentPlayer.id);
+    } else {
+      _lastEffectMessage = "Insufficient Credits to buy ${tile.label}!";
+      notifyListeners();
+    }
+  }
+
   void _handleTileLanding() {
     final currentTile = _tiles[currentPlayer.position];
     final int multiplier = currentPlayer.scoreMultiplier;
+
+    // Reset temporary state
+    _currentEventCard = null;
 
     switch (currentTile.type) {
       case TileType.start:
@@ -284,30 +397,64 @@ class GameController extends ChangeNotifier {
             "Data Cache! +${50 * multiplier} Score, +50 Credits";
         break;
       case TileType.penalty:
-        // Penalties usually don't get multiplied benefits, but let's keep it raw for now.
-        // Or maybe penalties are reduced by upgrades? For now, raw.
-        currentPlayer.score += (-50); // Score can go down
-        currentPlayer.credits = max(
-          0,
-          currentPlayer.credits - 50,
-        ); // Credits min 0
+        currentPlayer.score += (-50);
+        currentPlayer.credits = max(0, currentPlayer.credits - 50);
         _lastEffectMessage = "Firewall Hit! -50 Score, -50 Credits";
         break;
       case TileType.event:
-        // Simple random event for MVP
-        final isGood = Random().nextBool();
-        if (isGood) {
-          currentPlayer.credits += 100;
-          _lastEffectMessage = "Lucky Hash! +100 Credits";
+        _handleEventCardLanding();
+        break;
+      case TileType.property:
+        if (currentTile.ownerId == null) {
+          _lastEffectMessage =
+              "Property For Sale: ${currentTile.value} Credits";
+          // UI will see this property and show Buy button
+        } else if (currentTile.ownerId != currentPlayer.id) {
+          // Pay Rent
+          final rent = currentTile.rent * multiplier; // Multiply rent? Why not.
+          currentPlayer.credits = max(0, currentPlayer.credits - rent);
+          // TODO: Pay the owner? For MVP just burn credits.
+          _lastEffectMessage = "Paid Rent: $rent to Owner";
         } else {
-          currentPlayer.credits = max(0, currentPlayer.credits - 50);
-          _lastEffectMessage = "Power Surge! -50 Credits";
+          _lastEffectMessage = "Welcome back to your node.";
         }
         break;
       case TileType.neutral:
-        // No effect
         break;
     }
     notifyListeners();
+    // Consider syncing player here for simple credit updates?
+    // We do explicit sync in rollDice() after this returns.
+  }
+
+  void _handleEventCardLanding() {
+    if (_eventDeck.isEmpty)
+      _generateEventDeck(); // Reshuffle if needed (shouldn't be empty)
+
+    final card = _eventDeck.removeAt(0);
+    _eventDeck.add(card); // Cycle to bottom
+
+    _currentEventCard = card;
+
+    // Apply Effect
+    switch (card.type) {
+      case EventCardType.gainCredits:
+        currentPlayer.credits += card.value;
+        break;
+      case EventCardType.loseCredits:
+        currentPlayer.credits = max(0, currentPlayer.credits - card.value);
+        break;
+      case EventCardType.moveForward:
+        // Careful of recursion! Just move index, don't trigger landing logic again immediately for MVP simplicity
+        currentPlayer.position =
+            (currentPlayer.position + card.value) % totalTiles;
+        break;
+      case EventCardType.moveBackward:
+        currentPlayer.position =
+            (currentPlayer.position - card.value + totalTiles) % totalTiles;
+        break;
+    }
+
+    _lastEffectMessage = "EVENT: ${card.title}";
   }
 }

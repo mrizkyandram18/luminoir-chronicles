@@ -38,10 +38,32 @@ class SupabaseService {
     }
   }
 
+  /// Listen to 'properties' table for ownership changes.
+  Stream<List<Map<String, dynamic>>> getPropertiesStream() {
+    return _client
+        .from('properties')
+        .stream(primaryKey: ['tile_id'])
+        .map((data) => data);
+  }
+
+  /// Update property ownership
+  Future<void> upsertProperty(int tileId, String ownerId) async {
+    try {
+      await _client.from('properties').upsert({
+        'tile_id': tileId,
+        'owner_id': ownerId,
+      });
+    } catch (e) {
+      debugPrint("Supabase Error upserting property: $e");
+    }
+  }
+
   /// Reset all players (New Game)
   Future<void> resetGame(List<Player> defaults) async {
     for (final p in defaults) {
       await upsertPlayer(p);
     }
+    // Also reset properties if we had a way to clear table or set owners to null
+    // For now, MVP assumes manual cleanup or persistent world.
   }
 }

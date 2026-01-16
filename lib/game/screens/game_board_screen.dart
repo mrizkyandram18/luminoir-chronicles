@@ -111,6 +111,9 @@ class GameBoardScreen extends StatelessWidget {
                         ...List.generate(controller.tiles.length, (index) {
                           final tile = controller.tiles[index];
                           Color tileColor;
+                          Color borderColor = Colors.transparent;
+
+                          // Determine Base Color
                           switch (tile.type) {
                             case TileType.reward:
                               tileColor = Colors.greenAccent;
@@ -124,8 +127,23 @@ class GameBoardScreen extends StatelessWidget {
                             case TileType.start:
                               tileColor = Colors.white;
                               break;
+                            case TileType.property:
+                              tileColor = Colors.amberAccent;
+                              break;
                             default:
-                              tileColor = Colors.cyanAccent;
+                              tileColor = Colors.cyanAccent.withOpacity(0.3);
+                          }
+
+                          // Determine Owner Border
+                          if (tile.ownerId != null) {
+                            final owner = controller.players.firstWhere(
+                              (p) => p.id == tile.ownerId,
+                              orElse: () => controller.players[0], // Fallback
+                            );
+                            borderColor = owner.color;
+                            tileColor = owner.color.withOpacity(
+                              0.2,
+                            ); // Tint tile with owner color
                           }
 
                           return Align(
@@ -134,15 +152,21 @@ class GameBoardScreen extends StatelessWidget {
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
+                                color: Colors.black.withOpacity(0.8),
                                 border: Border.all(
-                                  color: tileColor,
-                                  width: 1.5,
+                                  color: tile.ownerId != null
+                                      ? borderColor
+                                      : tileColor,
+                                  width: tile.ownerId != null ? 3.0 : 1.5,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: tileColor.withValues(alpha: 0.2),
+                                    color:
+                                        (tile.ownerId != null
+                                                ? borderColor
+                                                : tileColor)
+                                            .withOpacity(0.3),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -153,22 +177,46 @@ class GameBoardScreen extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      tile.label,
+                                      tile.ownerId != null
+                                          ? "OWNED"
+                                          : tile.label,
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.robotoMono(
-                                        color: tileColor,
-                                        fontSize: 8,
+                                        color: tile.ownerId != null
+                                            ? borderColor
+                                            : tileColor,
+                                        fontSize: 7,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    // Optional: Show value if not Start
+                                    // Price or Value
+                                    if (tile.type == TileType.property &&
+                                        tile.ownerId == null)
+                                      Text(
+                                        "\$${tile.value}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                        ),
+                                      ),
                                     if (tile.value != 0 &&
+                                        tile.type != TileType.property &&
                                         tile.type != TileType.start)
                                       Text(
                                         "${tile.value > 0 ? '+' : ''}${tile.value}",
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 8,
+                                        ),
+                                      ),
+
+                                    // Rent Indicator
+                                    if (tile.ownerId != null)
+                                      Text(
+                                        "R: \$${tile.rent}",
+                                        style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 7,
                                         ),
                                       ),
                                   ],
@@ -234,36 +282,76 @@ class GameBoardScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Upgrade Button
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[900],
-                      foregroundColor: Colors.yellowAccent,
-                      side: BorderSide(color: Colors.yellowAccent),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 15,
+                  // Buy Property Button (Conditional)
+                  if (controller
+                              .tiles[controller.currentPlayer.position]
+                              .type ==
+                          TileType.property &&
+                      controller
+                              .tiles[controller.currentPlayer.position]
+                              .ownerId ==
+                          null)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 15,
+                        ),
+                      ),
+                      onPressed: () {
+                        context.read<GameController>().buyProperty(
+                          controller.currentPlayer.position,
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          Text(
+                            "BUY PROP",
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "\$${controller.tiles[controller.currentPlayer.position].value}",
+                            style: GoogleFonts.orbitron(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    // Upgrade Button (Default)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[900],
+                        foregroundColor: Colors.yellowAccent,
+                        side: BorderSide(color: Colors.yellowAccent),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 15,
+                        ),
+                      ),
+                      onPressed: () {
+                        final game = context.read<GameController>();
+                        game.buyUpgrade();
+                      },
+                      child: Column(
+                        children: [
+                          Text(
+                            "UPGRADE",
+                            style: GoogleFonts.robotoMono(fontSize: 10),
+                          ),
+                          Text(
+                            "\$200",
+                            style: GoogleFonts.orbitron(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    onPressed: () {
-                      final game = context.read<GameController>();
-                      game.buyUpgrade();
-                    },
-                    child: Column(
-                      children: [
-                        Text(
-                          "UPGRADE",
-                          style: GoogleFonts.robotoMono(fontSize: 10),
-                        ),
-                        Text(
-                          "\$200",
-                          style: GoogleFonts.orbitron(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const Gap(20),
 
                   // Roll Stats
@@ -301,6 +389,69 @@ class GameBoardScreen extends StatelessWidget {
                     onPressed: () async {
                       final game = context.read<GameController>();
                       await game.rollDice();
+
+                      // Check for Event Card after roll
+                      if (context.mounted && game.currentEventCard != null) {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: Colors.purpleAccent,
+                                width: 2,
+                              ),
+                            ),
+                            title: Text(
+                              "EVENT INTERCEPTED",
+                              style: GoogleFonts.orbitron(
+                                color: Colors.purpleAccent,
+                              ),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  game.currentEventCard!.title,
+                                  style: GoogleFonts.robotoMono(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Gap(10),
+                                Text(
+                                  game.currentEventCard!.description,
+                                  style: GoogleFonts.roboto(
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                const Gap(20),
+                                Text(
+                                  game.currentEventCard!.value.toString(),
+                                  style: GoogleFonts.sourceCodePro(
+                                    color: Colors.purpleAccent,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: Text(
+                                  "ACKNOWLEDGE",
+                                  style: GoogleFonts.orbitron(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
                       if (context.mounted && game.lastEffectMessage != null) {
                         ScaffoldMessenger.of(context).showSnackBar(
