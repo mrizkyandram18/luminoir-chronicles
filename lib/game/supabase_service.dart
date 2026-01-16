@@ -47,12 +47,16 @@ class SupabaseService {
   }
 
   /// Update property ownership and level
-  Future<void> upsertProperty(int tileId, String ownerId, int level) async {
+  Future<void> upsertProperty(
+    int tileId,
+    String ownerId,
+    int upgradeLevel,
+  ) async {
     try {
       await _client.from('properties').upsert({
         'tile_id': tileId,
         'owner_id': ownerId,
-        'level': level,
+        'upgrade_level': upgradeLevel,
       });
     } catch (e) {
       debugPrint("Supabase Error upserting property: $e");

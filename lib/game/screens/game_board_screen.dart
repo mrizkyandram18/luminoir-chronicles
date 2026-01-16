@@ -215,7 +215,7 @@ class GameBoardScreen extends StatelessWidget {
                                       Column(
                                         children: [
                                           Text(
-                                            "Lv ${tile.level}",
+                                            "Lv ${tile.upgradeLevel}",
                                             style: GoogleFonts.orbitron(
                                               color: Colors.yellow,
                                               fontSize: 8,
@@ -352,7 +352,7 @@ class GameBoardScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        context.read<GameController>().upgradeProperty(
+                        context.read<GameController>().buyPropertyUpgrade(
                           controller.currentPlayer.position,
                         );
                       },
@@ -366,7 +366,7 @@ class GameBoardScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            "\$${controller.tiles[controller.currentPlayer.position].value * controller.tiles[controller.currentPlayer.position].level}",
+                            "\$200",
                             style: GoogleFonts.orbitron(fontSize: 12),
                           ),
                         ],
