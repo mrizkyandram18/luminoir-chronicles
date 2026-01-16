@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'gatekeeper/gatekeeper_service.dart';
 import 'gatekeeper/screens/access_denied_screen.dart';
@@ -12,7 +13,16 @@ import 'game/screens/game_board_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO: Initialize Firebase and Supabase here
+
+  // Initialize Supabase
+  // TODO: Replace with your actual Supabase URL and Anon Key
+  await Supabase.initialize(
+    url: 'https://PLACEHOLDER_URL.supabase.co',
+    anonKey: 'PLACEHOLDER_ANON_KEY',
+  );
+
+  // TODO: Initialize Firebase here (uncomment when ready)
+  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(
     MultiProvider(
