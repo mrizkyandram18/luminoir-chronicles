@@ -116,7 +116,7 @@ void main() {
     // VERIFY: Players loaded from Supabase Mock
     expect(gameController.players.length, 1);
     expect(gameController.players.first.name, 'Tester');
-    print("✅ Supabase Sync Verified: Player data loaded.");
+    // ✅ Supabase Sync Verified: Player data loaded.
 
     // ---------------------------------------------------
     // 3. ACTION (Gatekeeper Check Phase)
@@ -127,10 +127,10 @@ void main() {
 
     // VERIFY: Gatekeeper Checked
     verify(mockGatekeeper.isChildAgentActive('demoparent', 'child1')).called(1);
-    print("✅ Firebase Gatekeeper Verified: Check performed on action.");
+    // ✅ Firebase Gatekeeper Verified: Check performed on action.
 
     // VERIFY: Player state updated to Supabase (upsert)
     verify(mockSupabase.upsertPlayer(any)).called(1);
-    print("✅ Supabase Sync Verified: Player state saved after action.");
+    // ✅ Supabase Sync Verified: Player state saved after action.
   });
 }
