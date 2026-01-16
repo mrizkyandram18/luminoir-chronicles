@@ -43,7 +43,7 @@ class GameController extends ChangeNotifier {
   final bool isMultiplayer;
   final String? roomId;
   final String? myChildId;
-  final MultiplayerService _multiplayerService = MultiplayerService();
+  late final MultiplayerService _multiplayerService;
   StreamSubscription<GameRoom>? _roomSubscription;
   StreamSubscription<List<RoomPlayer>>? _roomPlayersSubscription;
   bool _isMyTurn = true; // Default true for single player
@@ -58,12 +58,18 @@ class GameController extends ChangeNotifier {
     required String parentId,
     required String childId,
     SupabaseService? supabaseService, // Optional injection for testing
+    MultiplayerService? multiplayerService, // Optional injection for testing
     this.isMultiplayer = false,
     this.roomId,
     this.myChildId,
   }) : _currentParentId = parentId,
        _currentChildId = childId,
        _supabase = supabaseService ?? SupabaseService() {
+    // Initialize multiplayer service ONLY when needed (avoid Supabase.instance in tests)
+    if (isMultiplayer) {
+      _multiplayerService = multiplayerService ?? MultiplayerService();
+    }
+
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
     _generateEventDeck();
