@@ -212,12 +212,24 @@ class GameBoardScreen extends StatelessWidget {
 
                                     // Rent Indicator
                                     if (tile.ownerId != null)
-                                      Text(
-                                        "R: \$${tile.rent}",
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 7,
-                                        ),
+                                      Column(
+                                        children: [
+                                          Text(
+                                            "Lv ${tile.level}",
+                                            style: GoogleFonts.orbitron(
+                                              color: Colors.yellow,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            "R: \$${tile.rent}",
+                                            style: TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 7,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                   ],
                                 ),
@@ -321,8 +333,47 @@ class GameBoardScreen extends StatelessWidget {
                         ],
                       ),
                     )
+                  else if (controller
+                              .tiles[controller.currentPlayer.position]
+                              .type ==
+                          TileType.property &&
+                      controller
+                              .tiles[controller.currentPlayer.position]
+                              .ownerId ==
+                          controller.currentPlayer.id)
+                    // Upgrade Property Button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 15,
+                        ),
+                      ),
+                      onPressed: () {
+                        context.read<GameController>().upgradeProperty(
+                          controller.currentPlayer.position,
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          Text(
+                            "UPGRADE",
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "\$${controller.tiles[controller.currentPlayer.position].value * controller.tiles[controller.currentPlayer.position].level}",
+                            style: GoogleFonts.orbitron(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
                   else
-                    // Upgrade Button (Default)
+                    // Player Upgrade Button (Default)
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey[900],
@@ -340,7 +391,7 @@ class GameBoardScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           Text(
-                            "UPGRADE",
+                            "BOOST",
                             style: GoogleFonts.robotoMono(fontSize: 10),
                           ),
                           Text(

@@ -64,7 +64,18 @@ class GameController extends ChangeNotifier {
         // Find local tile and update owner
         // Since tiles is List<Tile> and ID matches index in our generation logic...
         if (tileId >= 0 && tileId < _tiles.length) {
-          _tiles[tileId] = _tiles[tileId].copyWith(ownerId: ownerId);
+          // Robustly handle optional 'level' if it's new
+          final int level = data['level'] ?? 1;
+          // Recalculate rent based on level if we rely on local calculation
+          // Or we could store rent in DB? Let's use formula.
+          final baseRent = 20 + (tileId * 2);
+          final newRent = baseRent * level;
+
+          _tiles[tileId] = _tiles[tileId].copyWith(
+            ownerId: ownerId,
+            level: level,
+            rent: newRent,
+          );
         }
       }
       notifyListeners();
@@ -368,10 +379,56 @@ class GameController extends ChangeNotifier {
       notifyListeners();
 
       // Sync Player (Credits) and Property (Owner)
+      // Pass level 1 for new purchase
       await _supabase.upsertPlayer(currentPlayer);
-      await _supabase.upsertProperty(tileId, currentPlayer.id);
+      await _supabase.upsertProperty(tileId, currentPlayer.id, 1);
     } else {
       _lastEffectMessage = "Insufficient Credits to buy ${tile.label}!";
+      notifyListeners();
+    }
+  }
+
+  /// Upgrade a property (Tycoon Mechanic)
+  Future<void> upgradeProperty(int tileId) async {
+    // Check Gatekeeper
+    if (!await _gatekeeper.isChildAgentActive(_currentChildId)) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
+    final tile = _tiles[tileId];
+    if (tile.type != TileType.property) return;
+    if (tile.ownerId != currentPlayer.id) {
+      _lastEffectMessage = "You don't own this property!";
+      notifyListeners();
+      return;
+    }
+
+    if (tile.level >= 5) {
+      _lastEffectMessage = "Property at Max Level!";
+      notifyListeners();
+      return;
+    }
+
+    // Cost calculation: Base Value * Level
+    // e.g. Base 100. Lv 1->2 cost 100. Lv 2->3 cost 200.
+    int upgradeCost = tile.value * tile.level;
+
+    if (currentPlayer.credits >= upgradeCost) {
+      currentPlayer.credits -= upgradeCost;
+      final newLevel = tile.level + 1;
+      final newRent = (20 + (tileId * 2)) * newLevel; // Simple scaling
+
+      _tiles[tileId] = tile.copyWith(level: newLevel, rent: newRent);
+
+      _lastEffectMessage = "Upgraded ${tile.label} to Level $newLevel!";
+      notifyListeners();
+
+      await _supabase.upsertPlayer(currentPlayer);
+      await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
+    } else {
+      _lastEffectMessage = "Need $upgradeCost Credits to upgrade!";
       notifyListeners();
     }
   }

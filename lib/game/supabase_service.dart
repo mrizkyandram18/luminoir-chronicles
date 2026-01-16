@@ -46,12 +46,13 @@ class SupabaseService {
         .map((data) => data);
   }
 
-  /// Update property ownership
-  Future<void> upsertProperty(int tileId, String ownerId) async {
+  /// Update property ownership and level
+  Future<void> upsertProperty(int tileId, String ownerId, int level) async {
     try {
       await _client.from('properties').upsert({
         'tile_id': tileId,
         'owner_id': ownerId,
+        'level': level,
       });
     } catch (e) {
       debugPrint("Supabase Error upserting property: $e");

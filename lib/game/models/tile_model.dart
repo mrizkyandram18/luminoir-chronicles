@@ -9,6 +9,7 @@ class Tile {
   // Property Fields
   final String? ownerId; // Null if bank owned
   final int rent;
+  final int level; // 1-5
 
   const Tile({
     required this.id,
@@ -17,17 +18,19 @@ class Tile {
     this.value = 0,
     this.ownerId,
     this.rent = 0,
+    this.level = 1,
   });
 
-  // Create a copy with new owner
-  Tile copyWith({String? ownerId}) {
+  // Create a copy with new owner or level
+  Tile copyWith({String? ownerId, int? level, int? rent}) {
     return Tile(
       id: id,
       type: type,
       label: label,
       value: value,
       ownerId: ownerId ?? this.ownerId,
-      rent: rent,
+      rent: rent ?? this.rent,
+      level: level ?? this.level,
     );
   }
 }
