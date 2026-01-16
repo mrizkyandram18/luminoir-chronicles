@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'models/tile_model.dart';
 import 'models/player_model.dart';
 import '../gatekeeper/gatekeeper_service.dart';
+import 'supabase_service.dart';
 
 class GameController extends ChangeNotifier {
-  // Phase 3: Multiplayer State
-  final List<Player> _players = [];
+  // Players (Synced from Stream)
+  List<Player> _players = [];
   int _currentPlayerIndex = 0;
 
   int _diceRoll = 0; // Last dice roll result
@@ -14,6 +15,9 @@ class GameController extends ChangeNotifier {
 
   // Phase 5: Gatekeeper
   final GatekeeperService _gatekeeper;
+  // Phase 6: Supabase
+  final SupabaseService _supabase = SupabaseService();
+
   // Hardcoded ID for MVP - normally comes from Auth
   final String _currentChildId = "test_agent_01";
 
@@ -29,7 +33,35 @@ class GameController extends ChangeNotifier {
   GameController(this._gatekeeper) {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
-    _initializePlayers();
+
+    // Create default players in memory for initial setup if needed
+    final defaultPlayers = _createDefaultPlayers();
+
+    // Initialize DB if empty
+    _supabase.initializeDefaultPlayersIfNeeded(defaultPlayers);
+
+    // Subscribe to stream
+    _supabase.getPlayersStream().listen((updatedPlayers) {
+      if (updatedPlayers.isNotEmpty) {
+        // Assume sorted by ID from service
+        _players = updatedPlayers;
+        notifyListeners();
+      }
+    });
+
+    // Initial local population to avoid empty screen before first stream event
+    if (_players.isEmpty) {
+      _players = defaultPlayers;
+    }
+  }
+
+  List<Player> _createDefaultPlayers() {
+    return [
+      Player(id: 'p1', name: 'Player 1', color: Colors.cyanAccent),
+      Player(id: 'p2', name: 'Player 2', color: Colors.purpleAccent),
+      Player(id: 'p3', name: 'Player 3', color: Colors.orangeAccent),
+      Player(id: 'p4', name: 'Player 4', color: Colors.greenAccent),
+    ];
   }
 
   // Getters
@@ -47,18 +79,6 @@ class GameController extends ChangeNotifier {
   List<Alignment> get boardPath => _boardPath;
 
   Alignment getPlayerAlignment(Player p) => _boardPath[p.position];
-
-  void _initializePlayers() {
-    _players.clear();
-    _players.add(Player(id: 'p1', name: 'Player 1', color: Colors.cyanAccent));
-    _players.add(
-      Player(id: 'p2', name: 'Player 2', color: Colors.purpleAccent),
-    );
-    _players.add(
-      Player(id: 'p3', name: 'Player 3', color: Colors.orangeAccent),
-    );
-    _players.add(Player(id: 'p4', name: 'Player 4', color: Colors.greenAccent));
-  }
 
   Future<void> rollDice() async {
     // Phase 5: Check Gatekeeper
@@ -80,23 +100,31 @@ class GameController extends ChangeNotifier {
     // We could make this cleaner with callbacks, but for MVP delay is fine.
     await Future.delayed(const Duration(milliseconds: 600));
 
-    _handleTileLanding();
+    _handleTileLanding(); // Updates local object state
 
-    // Auto specific delay before next turn? Or just let user click?
-    // User request: "nextTurn() to move to next player".
-    // Let's create a separate method for nextTurn if needed, but for MVP
-    // we can auto-advance or just leave the state ready for next click.
-    // Let's NOT auto-advance instantly so they can see the effect.
-    // But then the button needs to change to "END TURN" or we just update index.
-    // Simpler: Just update index now so next click is next player.
+    // SYNC TO SUPABASE
+    await _supabase.upsertPlayer(currentPlayer);
+
+    // Turn Management:
+    // For MVP, we cycle turn locally index, but we should store this in DB ideally.
+    // For now, if we assume players are ordered, 'next turn' is logic derived
+    // or we update a 'isTurn' field.
+    // Let's implement simple index cycling visually for now, but in real multiplayer
+    // we need to set 'isTurn' or similar.
+    // ...
     _nextTurn();
   }
 
   void _moveCurrentPlayer(int steps) {
     currentPlayer.position = (currentPlayer.position + steps) % totalTiles;
+    // We update Supabase AFTER the whole move is done to minimize jitters?
+    // Or intermediate? Let's verify final state.
   }
 
   void _nextTurn() {
+    // TODO: Sync Turn Index to DB if we want strict turn enforcement.
+    // For this Phase, we just cycle locally for the view, but since everyone
+    // sees the same list, we need a way to verify who's turn it is.
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
     notifyListeners();
   }
@@ -226,6 +254,10 @@ class GameController extends ChangeNotifier {
       _lastEffectMessage =
           "${currentPlayer.name} Upgraded! Multiplier now x${currentPlayer.scoreMultiplier}!";
       notifyListeners();
+
+      // SYNC
+      await _supabase.upsertPlayer(currentPlayer);
+
       return true;
     } else {
       _lastEffectMessage = "Insufficient Funds! Need 200 Credits.";
