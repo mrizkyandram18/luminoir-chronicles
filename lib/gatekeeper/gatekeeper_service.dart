@@ -1,46 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
-  bool _isSystemOnline = true; // Default to true for development/mock
+  bool _isSystemOnline = true;
 
   bool get isSystemOnline => _isSystemOnline;
 
-  Future<void> checkStatus() async {
-    // ---------------------------------------------------------
-    // REAL FIREBASE IMPLEMENTATION (Uncomment when config ready)
-    // ---------------------------------------------------------
-    /*
+  /// Checks if the Child Agent is active (last_seen < 5 mins ago).
+  /// Returns true if active, false if offline.
+  Future<bool> isChildAgentActive(String childId) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('agents')
-          .doc('child_agent_id') // Replace with actual ID
-          .get();
+      final docRef = FirebaseFirestore.instance
+          .collection('child_agents')
+          .doc(childId);
+      final snapshot = await docRef.get();
 
-      if (snapshot.exists) {
-        final lastSeen = (snapshot.data()?['last_seen'] as Timestamp?)?.toDate();
-        if (lastSeen != null) {
-          final diff = DateTime.now().difference(lastSeen);
-          // Active if seen in last 2 minutes
-          _isSystemOnline = diff.inMinutes < 2;
-        } else {
-          _isSystemOnline = false;
-        }
+      if (!snapshot.exists) {
+        debugPrint("Gatekeeper: Agent $childId not found in Firestore.");
+        return false;
       }
+
+      final data = snapshot.data();
+      if (data == null || !data.containsKey('last_seen')) {
+        return false;
+      }
+
+      final Timestamp lastSeen = data['last_seen'];
+      final DateTime lastSeenDate = lastSeen.toDate();
+      final DateTime now = DateTime.now();
+
+      final difference = now.difference(lastSeenDate).inMinutes;
+
+      // Active if seen within last 5 minutes
+      final isActive = difference < 5;
+
+      if (!isActive) {
+        debugPrint(
+          "Gatekeeper: Agent inactive. Last seen $difference mins ago.",
+        );
+      }
+      return isActive;
     } catch (e) {
-      debugPrint('Gatekeeper Error: $e');
-      _isSystemOnline = false;
+      debugPrint("Gatekeeper Error: $e");
+      // Fallback for demo if config missing, but strictly should be false.
+      // We'll return false to enforce the rule.
+      return false;
     }
-    */
+  }
 
-    // ---------------------------------------------------------
-    // MOCK IMPLEMENTATION (For MVP / No Firebase Config)
-    // ---------------------------------------------------------
-    // simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Default to true for development. Set to false to test "Access Denied".
-    _isSystemOnline = true;
+  // Legacy/Mock status (kept for compatibility with Splash Screen)
+  Future<void> checkStatus() async {
+    // In a real app, we might check Auth/Connectivity here
     notifyListeners();
   }
 }

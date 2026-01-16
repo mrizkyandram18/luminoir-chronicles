@@ -18,7 +18,12 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => GatekeeperService()),
-        ChangeNotifierProvider(create: (_) => GameController()),
+        ChangeNotifierProxyProvider<GatekeeperService, GameController>(
+          create: (context) =>
+              GameController(context.read<GatekeeperService>()),
+          update: (context, gatekeeper, previous) =>
+              previous ?? GameController(gatekeeper),
+        ),
       ],
       child: const CyberTycoonApp(),
     ),

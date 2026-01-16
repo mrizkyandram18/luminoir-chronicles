@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'models/tile_model.dart';
 import 'models/player_model.dart';
+import '../gatekeeper/gatekeeper_service.dart';
 
 class GameController extends ChangeNotifier {
   // Phase 3: Multiplayer State
@@ -10,6 +11,11 @@ class GameController extends ChangeNotifier {
 
   int _diceRoll = 0; // Last dice roll result
   String? _lastEffectMessage;
+
+  // Phase 5: Gatekeeper
+  final GatekeeperService _gatekeeper;
+  // Hardcoded ID for MVP - normally comes from Auth
+  final String _currentChildId = "test_agent_01";
 
   // Total tiles on the board
   final int totalTiles = 20;
@@ -20,7 +26,7 @@ class GameController extends ChangeNotifier {
   // Phase 2: Tile Logic
   late final List<Tile> _tiles;
 
-  GameController() {
+  GameController(this._gatekeeper) {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
     _initializePlayers();
@@ -55,6 +61,14 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> rollDice() async {
+    // Phase 5: Check Gatekeeper
+    final isActive = await _gatekeeper.isChildAgentActive(_currentChildId);
+    if (!isActive) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
     _lastEffectMessage = null; // Clear previous message
     notifyListeners();
 
@@ -194,7 +208,15 @@ class GameController extends ChangeNotifier {
     });
   }
 
-  bool buyUpgrade() {
+  Future<bool> buyUpgrade() async {
+    // Phase 5: Check Gatekeeper
+    final isActive = await _gatekeeper.isChildAgentActive(_currentChildId);
+    if (!isActive) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return false;
+    }
+
     // Basic Upgrade: Cost 200, adds +1 to Multiplier
     const int upgradeCost = 200;
 
