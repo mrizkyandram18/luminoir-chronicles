@@ -17,7 +17,7 @@ class GameController extends ChangeNotifier {
   // Phase 5: Gatekeeper
   final GatekeeperService _gatekeeper;
   // Phase 6: Supabase
-  final SupabaseService _supabase = SupabaseService();
+  final SupabaseService _supabase;
 
   // Dynamic IDs from Setup Screen
   final String _currentParentId;
@@ -40,8 +40,10 @@ class GameController extends ChangeNotifier {
     this._gatekeeper, {
     required String parentId,
     required String childId,
+    SupabaseService? supabaseService, // Optional injection for testing
   }) : _currentParentId = parentId,
-       _currentChildId = childId {
+       _currentChildId = childId,
+       _supabase = supabaseService ?? SupabaseService() {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
     _generateEventDeck();
