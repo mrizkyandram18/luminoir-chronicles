@@ -103,15 +103,10 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   }
 
   void _navigateToGame() {
+    // TODO: GameBoardScreen uses Provider pattern, not direct params
+    // Will be updated when GameController multiplayer integration is complete
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => GameBoardScreen(
-          parentId: 'parent', // TODO: Pass from previous screen
-          childId: widget.childId,
-          isMultiplayer: true,
-          roomId: widget.roomId,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => const GameBoardScreen()),
     );
   }
 
@@ -129,12 +124,17 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final connectedPlayers = _players.where((p) => p.isConnected).length;
-    final maxPlayers = _currentRoom?.maxPlayers ?? 4;
 
-    return WillPopScope(
-      onWillPop: () async {
-        await _leaveRoom();
-        return true;
+    final navigator = Navigator.of(context);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _leaveRoom().then((_) {
+            if (mounted) navigator.pop();
+          });
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -183,7 +183,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
 
   Widget _buildRoomCodeCard() {
     return Card(
-      color: const Color(0xFF16213E).withOpacity(0.9),
+      color: const Color(0xFF16213E).withValues(alpha: 0.9),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -223,7 +223,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     final maxPlayers = _currentRoom?.maxPlayers ?? 4;
 
     return Card(
-      color: const Color(0xFF16213E).withOpacity(0.9),
+      color: const Color(0xFF16213E).withValues(alpha: 0.9),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -278,7 +278,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
       decoration: BoxDecoration(
         color: player.isConnected
             ? Colors.black26
-            : Colors.red.withOpacity(0.1),
+            : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isMe ? const Color(0xFF00D9FF) : Colors.white12,

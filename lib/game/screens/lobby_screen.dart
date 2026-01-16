@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../gatekeeper/gatekeeper_service.dart';
-import '../game/services/multiplayer_service.dart';
-import '../game/screens/waiting_room_screen.dart';
+import '../services/multiplayer_service.dart';
+import 'waiting_room_screen.dart';
 
 /// Lobby screen for creating or joining multiplayer rooms
 class LobbyScreen extends StatefulWidget {
@@ -50,6 +48,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       final room = await _multiplayerService.getRoomByCode(roomCode);
       if (room == null) throw Exception('Room not found');
 
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => WaitingRoomScreen(
@@ -192,7 +191,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   Widget _buildCreateRoomCard() {
     return Card(
-      color: const Color(0xFF16213E).withOpacity(0.8),
+      color: const Color(0xFF16213E).withValues(alpha: 0.8),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -257,7 +256,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   Widget _buildJoinRoomCard() {
     return Card(
-      color: const Color(0xFF16213E).withOpacity(0.8),
+      color: const Color(0xFF16213E).withValues(alpha: 0.8),
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
