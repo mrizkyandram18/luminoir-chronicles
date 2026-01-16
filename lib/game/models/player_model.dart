@@ -25,10 +25,8 @@ class Player {
     return {
       'id': id,
       'name': name,
-      'color_a': (color.a * 255).round(),
-      'color_r': (color.r * 255).round(),
-      'color_g': (color.g * 255).round(),
-      'color_b': (color.b * 255).round(),
+      // Store color as a single integer (ARGB)
+      'color_value': color.toARGB32(),
       'position': position,
       'score': score,
       'credits': credits,
@@ -41,12 +39,10 @@ class Player {
     return Player(
       id: map['id'] ?? '',
       name: map['name'] ?? 'Unknown',
-      color: Color.fromARGB(
-        map['color_a']?.toInt() ?? 255,
-        map['color_r']?.toInt() ?? 255,
-        map['color_g']?.toInt() ?? 255,
-        map['color_b']?.toInt() ?? 255,
-      ),
+      // Load color from integer, default to blue if missing
+      color: map['color_value'] != null
+          ? Color(map['color_value'])
+          : const Color(0xFF2196F3),
       position: map['position']?.toInt() ?? 0,
       score: map['score']?.toInt() ?? 0,
       credits: map['credits']?.toInt() ?? 500,

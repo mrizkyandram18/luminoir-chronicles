@@ -28,12 +28,27 @@ class _SetupScreenState extends State<SetupScreen> {
 
     setState(() => _isLoading = true);
 
-    // Create the controller here to pass it or provide it
-    // For simplicity with our current architecture, we will navigate to a page
-    // that wraps GameBoardScreen in the specific provider.
+    // Verify Agent Status BEFORE entering the game
+    final gatekeeper = context.read<GatekeeperService>();
+    final isActive = await gatekeeper.isChildAgentActive(
+      _parentIdController.text.trim(),
+      _childIdController.text.trim(),
+    );
 
-    // We can also just pre-validate the IDs here if we wanted to be fancy,
-    // but for now let's just jump to the game.
+    if (!mounted) return;
+
+    if (!isActive) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Access Denied: Agent '${_childIdController.text}' not active or not found.",
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     if (mounted) {
       Navigator.of(context).pushReplacement(
