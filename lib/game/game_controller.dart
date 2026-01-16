@@ -1,10 +1,13 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'models/tile_model.dart';
 import 'models/player_model.dart';
 import 'models/event_card_model.dart';
+import 'models/room_model.dart';
 import '../gatekeeper/gatekeeper_service.dart';
 import 'supabase_service.dart';
+import 'services/multiplayer_service.dart';
 
 class GameController extends ChangeNotifier {
   // Players (Synced from Stream)
@@ -36,11 +39,28 @@ class GameController extends ChangeNotifier {
   final List<EventCard> _eventDeck = [];
   EventCard? _currentEventCard;
 
+  // Phase 16: Multiplayer
+  final bool isMultiplayer;
+  final String? roomId;
+  final String? myChildId;
+  final MultiplayerService _multiplayerService = MultiplayerService();
+  StreamSubscription<GameRoom>? _roomSubscription;
+  StreamSubscription<List<RoomPlayer>>? _roomPlayersSubscription;
+  bool _isMyTurn = true; // Default true for single player
+  List<RoomPlayer> _roomPlayers = [];
+
+  // Getters for multiplayer state
+  bool get isMyTurn => _isMyTurn;
+  List<RoomPlayer> get roomPlayers => _roomPlayers;
+
   GameController(
     this._gatekeeper, {
     required String parentId,
     required String childId,
     SupabaseService? supabaseService, // Optional injection for testing
+    this.isMultiplayer = false,
+    this.roomId,
+    this.myChildId,
   }) : _currentParentId = parentId,
        _currentChildId = childId,
        _supabase = supabaseService ?? SupabaseService() {
@@ -94,6 +114,51 @@ class GameController extends ChangeNotifier {
     if (_players.isEmpty) {
       _players = defaultPlayers;
     }
+
+    // Phase 16: Multiplayer subscriptions
+    if (isMultiplayer && roomId != null) {
+      _initMultiplayerSubscriptions();
+    }
+  }
+
+  /// Initialize multiplayer room subscriptions
+  void _initMultiplayerSubscriptions() {
+    if (roomId == null) return;
+
+    // Listen to room state changes (turn, game status)
+    _roomSubscription = _multiplayerService.getRoomStream(roomId!).listen((
+      room,
+    ) {
+      // Check if it's my turn
+      _isMyTurn = room.currentTurnChildId == myChildId;
+
+      // If game finished, could handle winner announcement here
+      if (room.isFinished && room.winnerChildId != null) {
+        debugPrint("Game Over! Winner: ${room.winnerChildId}");
+      }
+
+      notifyListeners();
+    }, onError: (e) => debugPrint("Room stream error: $e"));
+
+    // Listen to room players changes (for disconnect detection)
+    _roomPlayersSubscription = _multiplayerService
+        .getPlayersStream(roomId!)
+        .listen((players) {
+          _roomPlayers = players;
+
+          // Check for disconnects - if only me connected, I win
+          final connectedPlayers = players.where((p) => p.isConnected).toList();
+          if (connectedPlayers.length == 1 &&
+              connectedPlayers.first.childId == myChildId) {
+            // Everyone else disconnected - I win!
+            _multiplayerService.endGame(
+              roomId: roomId!,
+              winnerChildId: myChildId!,
+            );
+          }
+
+          notifyListeners();
+        }, onError: (e) => debugPrint("Room players stream error: $e"));
   }
 
   void _generateEventDeck() {
@@ -172,7 +237,21 @@ class GameController extends ChangeNotifier {
 
   Alignment getPlayerAlignment(Player p) => _boardPath[p.position];
 
+  @override
+  void dispose() {
+    _roomSubscription?.cancel();
+    _roomPlayersSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> rollDice() async {
+    // Phase 16: Check if it's my turn in multiplayer mode
+    if (isMultiplayer && !_isMyTurn) {
+      _lastEffectMessage = "Wait for your turn!";
+      notifyListeners();
+      return;
+    }
+
     // Phase 5: Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
