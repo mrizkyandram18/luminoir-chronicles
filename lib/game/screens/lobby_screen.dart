@@ -49,7 +49,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       if (room == null) throw Exception('Room not found');
 
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => WaitingRoomScreen(
             roomId: room.id,
@@ -104,7 +104,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => WaitingRoomScreen(
             roomId: room.id,
