@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:gap/gap.dart';
 import '../game_controller.dart';
 import 'game_board_screen.dart';
+import 'lobby_screen.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
 
 class SetupScreen extends StatefulWidget {
@@ -72,6 +73,59 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
       );
     }
+  }
+
+  /// Navigate to Multiplayer Lobby
+  Future<void> _goToMultiplayer() async {
+    if (_parentIdController.text.isEmpty || _childIdController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter Child Agent ID")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Verify Agent BEFORE entering multiplayer lobby
+    final gatekeeper = context.read<GatekeeperService>();
+    final result = await gatekeeper.isChildAgentActive(
+      _parentIdController.text.trim(),
+      _childIdController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Access Denied [${result.resultCode.code}]\n"
+            "${result.displayMessage}",
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Start realtime monitoring
+    gatekeeper.startRealtimeMonitoring(
+      _parentIdController.text.trim(),
+      _childIdController.text.trim(),
+    );
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LobbyScreen(
+          parentId: _parentIdController.text.trim(),
+          childId: _childIdController.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -143,12 +197,32 @@ class _SetupScreenState extends State<SetupScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
                       : Text(
-                          "INITIALIZE SYSTEM",
+                          "SINGLE PLAYER",
                           style: GoogleFonts.orbitron(
                             fontWeight: FontWeight.bold,
                             letterSpacing: 2,
                           ),
                         ),
+                ),
+              ),
+              const Gap(16),
+              // Multiplayer Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFFF6B6B), width: 2),
+                    foregroundColor: const Color(0xFFFF6B6B),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                  ),
+                  onPressed: _isLoading ? null : _goToMultiplayer,
+                  child: Text(
+                    "MULTIPLAYER",
+                    style: GoogleFonts.orbitron(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
                 ),
               ),
             ],
