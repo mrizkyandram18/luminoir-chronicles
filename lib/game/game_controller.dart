@@ -19,9 +19,9 @@ class GameController extends ChangeNotifier {
   // Phase 6: Supabase
   final SupabaseService _supabase = SupabaseService();
 
-  // Hardcoded ID for MVP - matches user's Firestore screenshot
-  final String _currentChildId = "child1";
-  final String _currentParentId = "demoparent";
+  // Dynamic IDs from Setup Screen
+  final String _currentParentId;
+  final String _currentChildId;
 
   // Total tiles on the board
   final int totalTiles = 20;
@@ -36,7 +36,12 @@ class GameController extends ChangeNotifier {
   final List<EventCard> _eventDeck = [];
   EventCard? _currentEventCard;
 
-  GameController(this._gatekeeper) {
+  GameController(
+    this._gatekeeper, {
+    required String parentId,
+    required String childId,
+  }) : _currentParentId = parentId,
+       _currentChildId = childId {
     _boardPath = _generateRectangularPath(totalTiles);
     _tiles = _generateTiles(totalTiles);
     _generateEventDeck();

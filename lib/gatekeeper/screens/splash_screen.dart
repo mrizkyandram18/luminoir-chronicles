@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (mounted) {
       if (gatekeeper.isSystemOnline) {
-        context.go('/menu');
+        context.go('/setup');
       } else {
         context.go('/access-denied');
       }
