@@ -7,44 +7,46 @@ class GatekeeperService extends ChangeNotifier {
 
   bool get isSystemOnline => _isSystemOnline;
 
-  /// Checks if the Child Agent is active (last_seen < 5 mins ago).
-  /// Returns true if active, false if offline.
-  Future<bool> isChildAgentActive(String childId) async {
+  /// Checks if the Child Agent is active.
+  /// Path: users/{parentId}/children/{childId}
+  /// Field: details.lastSeen
+  Future<bool> isChildAgentActive(String parentId, String childId) async {
     try {
       final docRef = FirebaseFirestore.instance
-          .collection('child_agents')
+          .collection('users')
+          .doc(parentId)
+          .collection('children')
           .doc(childId);
+
       final snapshot = await docRef.get();
 
       if (!snapshot.exists) {
-        debugPrint("Gatekeeper: Agent $childId not found in Firestore.");
+        debugPrint(
+          "Gatekeeper: Child Agent document not found at $parentId/$childId",
+        );
         return false;
       }
 
       final data = snapshot.data();
-      if (data == null || !data.containsKey('last_seen')) {
-        return false;
-      }
+      if (data == null || !data.containsKey('details')) return false;
 
-      final Timestamp lastSeen = data['last_seen'];
-      final DateTime lastSeenDate = lastSeen.toDate();
-      final DateTime now = DateTime.now();
+      final details = data['details'] as Map<String, dynamic>;
+      final Timestamp? lastSeen = details['lastSeen'] as Timestamp?;
 
-      final difference = now.difference(lastSeenDate).inMinutes;
+      if (lastSeen == null) return false;
+
+      final lastSeenDate = lastSeen.toDate();
+      final difference = DateTime.now().difference(lastSeenDate);
 
       // Active if seen within last 5 minutes
-      final isActive = difference < 5;
-
-      if (!isActive) {
-        debugPrint(
-          "Gatekeeper: Agent inactive. Last seen $difference mins ago.",
-        );
+      if (difference.inMinutes.abs() < 5) {
+        return true;
+      } else {
+        debugPrint("Gatekeeper: Agent inactive. Last seen: $difference ago.");
+        return false;
       }
-      return isActive;
     } catch (e) {
       debugPrint("Gatekeeper Error: $e");
-      // Fallback for demo if config missing, but strictly should be false.
-      // We'll return false to enforce the rule.
       return false;
     }
   }
