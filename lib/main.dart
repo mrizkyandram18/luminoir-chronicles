@@ -24,8 +24,28 @@ void main() async {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcmtzc2ZoY3hsdmp6eWlndWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTE3NzcsImV4cCI6MjA4NDEyNzc3N30.svgZlN95pJEzRvh4RtOhL_1J99o4a21LrUiT72B8p-w',
   );
 
-  // Initialize Firebase (Using google-services.json on Android)
-  await Firebase.initializeApp();
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// ...
+
+  // Initialize Firebase
+  if (kIsWeb) {
+    // WEB: Requires manual configuration
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyAfZYncZK7p1BK_250h_Sh1nsbqfvE9uZM",
+        authDomain: "parentalcontrol-5abd8.firebaseapp.com",
+        projectId: "parentalcontrol-5abd8",
+        storageBucket: "parentalcontrol-5abd8.firebasestorage.app",
+        messagingSenderId: "769889944258",
+        appId: "1:769889944258:web:5cad45c1c16904715af15b",
+        measurementId: "G-2EFN2GXX0F",
+      ),
+    );
+  } else {
+    // ANDROID/iOS: Uses google-services.json / GoogleService-Info.plist
+    await Firebase.initializeApp();
+  }
 
   runApp(
     MultiProvider(
