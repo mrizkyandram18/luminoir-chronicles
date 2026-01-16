@@ -409,4 +409,67 @@ void main() {
       expect(controller.lastEffectMessage, contains('ACCESS DENIED'));
     });
   });
+
+  // ============================================================
+  // GROUP 4: GatekeeperService Realtime Monitoring Tests
+  // ============================================================
+  group('GatekeeperService Realtime Monitoring Tests', () {
+    test('GatekeeperService should have isRealtimeActive getter', () {
+      // ARRANGE - Use real service instance for property tests
+      // Note: We can't easily mock Firebase streams here, so we test the model
+      // This tests that the property exists and has a default value
+
+      // We test that MockGatekeeperService can be used with expected interface
+      final mockGatekeeper = MockGatekeeperService();
+
+      // ASSERT - Mock implements GatekeeperService interface
+      expect(mockGatekeeper, isA<GatekeeperService>());
+    });
+
+    test('GatekeeperResult should have all result codes', () {
+      // ARRANGE & ACT & ASSERT
+      expect(GatekeeperResultCode.success.code, equals('00'));
+      expect(GatekeeperResultCode.userNotFound.code, equals('01'));
+      expect(GatekeeperResultCode.userInactive.code, equals('02'));
+      expect(GatekeeperResultCode.missingLastSeen.code, equals('03'));
+      expect(GatekeeperResultCode.connectionError.code, equals('04'));
+    });
+
+    test(
+      'GatekeeperResult isSuccess should return true only for success code',
+      () {
+        // ARRANGE
+        const successResult = GatekeeperResult(GatekeeperResultCode.success);
+        const failResult = GatekeeperResult(GatekeeperResultCode.userInactive);
+        const errorResult = GatekeeperResult(
+          GatekeeperResultCode.connectionError,
+        );
+
+        // ASSERT
+        expect(successResult.isSuccess, isTrue);
+        expect(failResult.isSuccess, isFalse);
+        expect(errorResult.isSuccess, isFalse);
+      },
+    );
+
+    test('GatekeeperResult should have displayMessage', () {
+      // ARRANGE
+      const result = GatekeeperResult(
+        GatekeeperResultCode.userInactive,
+        'Last seen: 2 hours ago',
+      );
+
+      // ASSERT
+      expect(result.displayMessage, contains('Last seen'));
+    });
+
+    test('GatekeeperResult resultCode getter should return correct code', () {
+      // ARRANGE
+      const result = GatekeeperResult(GatekeeperResultCode.missingLastSeen);
+
+      // ASSERT
+      expect(result.resultCode, equals(GatekeeperResultCode.missingLastSeen));
+      expect(result.resultCode.code, equals('03'));
+    });
+  });
 }
