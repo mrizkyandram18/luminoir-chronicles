@@ -10,6 +10,7 @@ class WaitingRoomScreen extends StatefulWidget {
   final String roomCode;
   final String childId;
   final bool isHost;
+  final MultiplayerService? multiplayerService;
 
   const WaitingRoomScreen({
     super.key,
@@ -17,6 +18,7 @@ class WaitingRoomScreen extends StatefulWidget {
     required this.roomCode,
     required this.childId,
     required this.isHost,
+    this.multiplayerService,
   });
 
   @override
@@ -24,9 +26,9 @@ class WaitingRoomScreen extends StatefulWidget {
 }
 
 class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
-  final _multiplayerService = MultiplayerService();
-  StreamSubscription<GameRoom>? _roomSubscription;
-  StreamSubscription<List<RoomPlayer>>? _playersSubscription;
+  late final MultiplayerService _multiplayerService;
+  StreamSubscription? _roomSubscription;
+  StreamSubscription? _playersSubscription;
 
   GameRoom? _currentRoom;
   List<RoomPlayer> _players = [];
@@ -35,6 +37,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
   @override
   void initState() {
     super.initState();
+    _multiplayerService = widget.multiplayerService ?? MultiplayerService();
     _subscribeToRoom();
     _subscribeToPlayers();
   }

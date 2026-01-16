@@ -77,15 +77,23 @@ class CyberTycoonApp extends StatelessWidget {
 }
 
 final _router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/setup',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
-    GoRoute(path: '/menu', builder: (context, state) => const MainMenuScreen()),
+    GoRoute(
+      path: '/menu',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, String>?;
+        return MainMenuScreen(
+          parentId: extra?['parentId'] ?? '',
+          childId: extra?['childId'] ?? '',
+        );
+      },
+    ),
     GoRoute(
       path: '/access-denied',
       builder: (context, state) => const AccessDeniedScreen(),
     ),
-    // Replaced direct game route with SetupScreen flow for now
     GoRoute(path: '/setup', builder: (context, state) => const SetupScreen()),
   ],
 );

@@ -10,9 +10,11 @@ class GatekeeperService extends ChangeNotifier {
   // Realtime monitoring
   StreamSubscription<DocumentSnapshot>? _realtimeListener;
   bool _isRealtimeActive = true;
+  String? _displayName;
 
   bool get isSystemOnline => _isSystemOnline;
   bool get isRealtimeActive => _isRealtimeActive;
+  String? get displayName => _displayName;
 
   /// Checks if the Child Agent is active.
   /// Returns a GatekeeperResult with specific result code
@@ -62,8 +64,11 @@ class GatekeeperService extends ChangeNotifier {
       final difference = DateTime.now().difference(lastSeenDate);
 
       // Active if seen within last 1 MINUTE (Strict realtime monitoring)
-      // If child stops service, they're locked out within 60 seconds
       if (difference.inMinutes.abs() < 1) {
+        // Fetch display name if available
+        _displayName = data['name'] ?? data['displayName'] ?? childId;
+        notifyListeners();
+
         // RC 00: Success
         return const GatekeeperResult(GatekeeperResultCode.success);
       } else {
@@ -156,5 +161,26 @@ class GatekeeperService extends ChangeNotifier {
   void dispose() {
     stopRealtimeMonitoring();
     super.dispose();
+  }
+
+  /// Update display name in Firestore
+  Future<void> updateDisplayName(
+    String parentId,
+    String childId,
+    String newName,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentId)
+          .collection('children')
+          .doc(childId)
+          .update({'name': newName});
+
+      _displayName = newName;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error updating display name: $e");
+    }
   }
 }

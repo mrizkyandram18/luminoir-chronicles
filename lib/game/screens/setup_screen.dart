@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:gap/gap.dart';
-import '../game_controller.dart';
-import 'game_board_screen.dart';
-import 'lobby_screen.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
+import 'main_menu.dart';
+import 'package:provider/provider.dart';
 
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
@@ -15,81 +12,24 @@ class SetupScreen extends StatefulWidget {
 }
 
 class _SetupScreenState extends State<SetupScreen> {
-  final _parentIdController = TextEditingController(text: "demoparent");
-  final _childIdController = TextEditingController(text: "usertesting 1");
+  final _childIdController = TextEditingController();
+  final String _parentId = "demoparent"; // Hardcoded as per requirement
+  // Removed _nameController as Display Name field is removed
   bool _isLoading = false;
 
-  Future<void> _startGame() async {
-    if (_parentIdController.text.isEmpty || _childIdController.text.isEmpty) {
+  Future<void> _login() async {
+    if (_childIdController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Please enter both IDs")));
+      ).showSnackBar(const SnackBar(content: Text("Please enter User ID")));
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // Verify Agent Status BEFORE entering the game
     final gatekeeper = context.read<GatekeeperService>();
     final result = await gatekeeper.isChildAgentActive(
-      _parentIdController.text.trim(),
-      _childIdController.text.trim(),
-    );
-
-    if (!mounted) return;
-
-    if (!result.isSuccess) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Access Denied [${result.resultCode.code}]\n"
-            "${result.displayMessage}",
-          ),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-      return;
-    }
-
-    // ✅ Login successful - Start realtime monitoring
-    gatekeeper.startRealtimeMonitoring(
-      _parentIdController.text.trim(),
-      _childIdController.text.trim(),
-    );
-
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => ChangeNotifierProvider(
-            create: (_) => GameController(
-              context.read<GatekeeperService>(),
-              parentId: _parentIdController.text,
-              childId: _childIdController.text,
-            ),
-            child: const GameBoardScreen(),
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Navigate to Multiplayer Lobby
-  Future<void> _goToMultiplayer() async {
-    if (_parentIdController.text.isEmpty || _childIdController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter Child Agent ID")),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    // Verify Agent BEFORE entering multiplayer lobby
-    final gatekeeper = context.read<GatekeeperService>();
-    final result = await gatekeeper.isChildAgentActive(
-      _parentIdController.text.trim(),
+      _parentId,
       _childIdController.text.trim(),
     );
 
@@ -111,19 +51,44 @@ class _SetupScreenState extends State<SetupScreen> {
 
     // Start realtime monitoring
     gatekeeper.startRealtimeMonitoring(
-      _parentIdController.text.trim(),
+      _parentId,
       _childIdController.text.trim(),
     );
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
-    Navigator.of(context).push(
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => LobbyScreen(
-          parentId: _parentIdController.text.trim(),
+        builder: (_) => MainMenuScreen(
+          parentId: _parentId,
           childId: _childIdController.text.trim(),
         ),
+      ),
+    );
+  }
+
+  // Removed _startGame method
+  // Removed _goToMultiplayer method
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+  }) {
+    return TextField(
+      controller: controller,
+      style: GoogleFonts.sourceCodePro(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.cyanAccent),
+        enabledBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.white24),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.cyanAccent),
+        ),
+        prefixIcon: Icon(icon, color: Colors.white54),
       ),
     );
   }
@@ -142,7 +107,7 @@ class _SetupScreenState extends State<SetupScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.cyanAccent.withValues(alpha: 0.2),
+                color: Colors.cyanAccent.withValues(alpha: 0.1),
                 blurRadius: 20,
               ),
             ],
@@ -159,32 +124,25 @@ class _SetupScreenState extends State<SetupScreen> {
                   shadows: [const Shadow(color: Colors.blue, blurRadius: 10)],
                 ),
               ),
-              const Gap(10),
+              const SizedBox(height: 16),
               Text(
                 "Login Configuration",
                 style: GoogleFonts.robotoMono(color: Colors.white54),
               ),
-              const Gap(30),
-              // Parent ID is now hidden/static for privacy
-              // const Gap(16),
-              // TextField(controller: _parentIdController...),
-              const Gap(16),
-              TextField(
-                controller: _childIdController,
-                style: GoogleFonts.sourceCodePro(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: "User ID",
-                  labelStyle: TextStyle(color: Colors.cyanAccent),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.cyanAccent),
-                  ),
-                  prefixIcon: Icon(Icons.person_pin, color: Colors.white54),
-                ),
+              const SizedBox(height: 32),
+              // Removed _buildTextField for _nameController and its SizedBox
+              /* _buildTextField(
+                controller: _parentIdController,
+                label: "PARENT ID",
+                icon: Icons.admin_panel_settings_outlined,
               ),
-              const Gap(30),
+              const SizedBox(height: 16), */
+              _buildTextField(
+                controller: _childIdController,
+                label: "USER ID",
+                icon: Icons.fingerprint,
+              ),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -193,36 +151,15 @@ class _SetupScreenState extends State<SetupScreen> {
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 20),
                   ),
-                  onPressed: _isLoading ? null : _startGame,
+                  onPressed: _isLoading ? null : _login,
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
                       : Text(
-                          "SINGLE PLAYER",
+                          "LOGIN TO SYSTEM",
                           style: GoogleFonts.orbitron(
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
                           ),
                         ),
-                ),
-              ),
-              const Gap(16),
-              // Multiplayer Button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFFF6B6B), width: 2),
-                    foregroundColor: const Color(0xFFFF6B6B),
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                  ),
-                  onPressed: _isLoading ? null : _goToMultiplayer,
-                  child: Text(
-                    "MULTIPLAYER",
-                    style: GoogleFonts.orbitron(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
                 ),
               ),
             ],

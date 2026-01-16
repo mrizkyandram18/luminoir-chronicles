@@ -220,6 +220,47 @@ void main() {
       expect(player.position, equals(5));
       expect(player.score, equals(100));
     });
+
+    test('RoomPlayer should handle large color values (BIGINT support)', () {
+      // ARRANGE
+      final map = {
+        'id': 'rp-3',
+        'room_id': 'room-789',
+        'child_id': 'child-3',
+        'player_name': 'Big Color Player',
+        'player_color': 4280391411, // 0xFF2196F3 as integer
+        'is_connected': true,
+        'joined_at': '2024-01-15T10:30:00',
+        'last_action_at': '2024-01-15T10:30:00',
+      };
+
+      // ACT
+      final player = RoomPlayer.fromMap(map);
+
+      // ASSERT
+      expect(player.playerColor.toARGB32(), equals(4280391411));
+    });
+
+    test('RoomPlayer should handle maximum color value (0xFFFFFFFF)', () {
+      // ARRANGE
+      final map = {
+        'id': 'rp-4',
+        'room_id': 'room-000',
+        'child_id': 'child-4',
+        'player_name': 'White Color Player',
+        'player_color': 4294967295, // 0xFFFFFFFF as integer
+        'is_connected': true,
+        'joined_at': '2024-01-15T10:30:00',
+        'last_action_at': '2024-01-15T10:30:00',
+      };
+
+      // ACT
+      final player = RoomPlayer.fromMap(map);
+
+      // ASSERT
+      expect(player.playerColor.toARGB32(), equals(4294967295));
+      expect(player.playerColor, equals(const Color(0xFFFFFFFF)));
+    });
   });
 
   // ============================================================

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../gatekeeper/gatekeeper_service.dart';
 import '../services/multiplayer_service.dart';
 import 'waiting_room_screen.dart';
 
@@ -6,8 +8,14 @@ import 'waiting_room_screen.dart';
 class LobbyScreen extends StatefulWidget {
   final String parentId;
   final String childId;
+  final MultiplayerService? multiplayerService;
 
-  const LobbyScreen({super.key, required this.parentId, required this.childId});
+  const LobbyScreen({
+    super.key,
+    required this.parentId,
+    required this.childId,
+    this.multiplayerService,
+  });
 
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
@@ -15,9 +23,15 @@ class LobbyScreen extends StatefulWidget {
 
 class _LobbyScreenState extends State<LobbyScreen> {
   final _roomCodeController = TextEditingController();
-  final _multiplayerService = MultiplayerService();
+  late final MultiplayerService _multiplayerService;
   bool _isLoading = false;
   int _selectedMaxPlayers = 2;
+
+  @override
+  void initState() {
+    super.initState();
+    _multiplayerService = widget.multiplayerService ?? MultiplayerService();
+  }
 
   @override
   void dispose() {
@@ -29,6 +43,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final gatekeeper = context.read<GatekeeperService>();
+      final displayName = gatekeeper.displayName ?? 'Player 1';
+
       final roomCode = await _multiplayerService.createRoom(
         hostChildId: widget.childId,
         maxPlayers: _selectedMaxPlayers,
@@ -38,7 +55,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       await _multiplayerService.joinRoom(
         roomCode: roomCode,
         childId: widget.childId,
-        playerName: 'Player 1', // TODO: Get from user input
+        playerName: displayName,
         playerColor: Colors.blue,
       );
 
@@ -84,6 +101,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final gatekeeper = context.read<GatekeeperService>();
+      final displayName = gatekeeper.displayName ?? 'Player';
+
       // Check if room exists
       final room = await _multiplayerService.getRoomByCode(code);
       if (room == null) {
@@ -98,7 +118,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       await _multiplayerService.joinRoom(
         roomCode: code,
         childId: widget.childId,
-        playerName: 'Player', // TODO: Get from user input
+        playerName: displayName,
         playerColor: Colors.red,
       );
 
