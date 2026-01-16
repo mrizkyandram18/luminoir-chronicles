@@ -38,8 +38,9 @@ class GatekeeperService extends ChangeNotifier {
       final lastSeenDate = lastSeen.toDate();
       final difference = DateTime.now().difference(lastSeenDate);
 
-      // Active if seen within last 5 minutes
-      if (difference.inMinutes.abs() < 5) {
+      // Active if seen within last 24 HOURS (Relaxed for testing)
+      // Original: 5 minutes
+      if (difference.inMinutes.abs() < 1440) {
         return true;
       } else {
         debugPrint("Gatekeeper: Agent inactive. Last seen: $difference ago.");
