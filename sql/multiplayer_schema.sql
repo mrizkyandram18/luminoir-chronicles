@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS room_players (
   room_id UUID REFERENCES game_rooms(id) ON DELETE CASCADE,
   child_id TEXT NOT NULL,
   player_name TEXT NOT NULL,
-  player_color INTEGER NOT NULL, -- ARGB color value (e.g., 0xFF2196F3)
+  player_color BIGINT NOT NULL, -- ARGB color value (e.g., 0xFF2196F3 = 4280391411)
   position INTEGER DEFAULT 0,
   score INTEGER DEFAULT 0,
   credits INTEGER DEFAULT 500,
