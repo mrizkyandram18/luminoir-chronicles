@@ -28,12 +28,22 @@ class GatekeeperService extends ChangeNotifier {
       }
 
       final data = snapshot.data();
-      if (data == null || !data.containsKey('details')) return false;
+      if (data == null) return false;
 
-      final details = data['details'] as Map<String, dynamic>;
-      final Timestamp? lastSeen = details['lastSeen'] as Timestamp?;
+      // Check root level first (based on screenshot), then fallback to details
+      Timestamp? lastSeen = data['lastSeen'] as Timestamp?;
 
-      if (lastSeen == null) return false;
+      if (lastSeen == null && data.containsKey('details')) {
+        final details = data['details'] as Map<String, dynamic>;
+        lastSeen = details['lastSeen'] as Timestamp?;
+      }
+
+      if (lastSeen == null) {
+        debugPrint(
+          "Gatekeeper: lastSeen field missing in ${snapshot.reference.path}",
+        );
+        return false;
+      }
 
       final lastSeenDate = lastSeen.toDate();
       final difference = DateTime.now().difference(lastSeenDate);
