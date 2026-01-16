@@ -7,9 +7,17 @@ class GatekeeperService extends ChangeNotifier {
 
   bool get isSystemOnline => _isSystemOnline;
 
+  // Mock mode for offline testing
+  bool isMockMode = true;
+
   /// Checks if the Child Agent is active (last_seen < 5 mins ago).
   /// Returns true if active, false if offline.
   Future<bool> isChildAgentActive(String childId) async {
+    if (isMockMode) {
+      debugPrint("Gatekeeper: Mock Mode ACTIVE. Bypass check.");
+      return true;
+    }
+
     try {
       final docRef = FirebaseFirestore.instance
           .collection('child_agents')
