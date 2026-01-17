@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
 import 'lobby_screen.dart';
-import 'game_board_screen.dart';
+import 'game_board_screen_enhanced.dart';
 import '../game_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -65,7 +65,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             parentId: widget.parentId,
             childId: widget.childId,
           ),
-          child: const GameBoardScreen(),
+          child: const GameBoardScreenEnhanced(),
         ),
       ),
     );

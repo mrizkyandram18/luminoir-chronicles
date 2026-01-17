@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/multiplayer_service.dart';
 import '../models/room_model.dart';
-import 'game_board_screen.dart';
+import 'game_board_screen_enhanced.dart';
 
 /// Waiting room screen where players wait for host to start
 class WaitingRoomScreen extends StatefulWidget {
@@ -109,7 +109,7 @@ class _WaitingRoomScreenState extends State<WaitingRoomScreen> {
     // TODO: GameBoardScreen uses Provider pattern, not direct params
     // Will be updated when GameController multiplayer integration is complete
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const GameBoardScreen()),
+      MaterialPageRoute(builder: (_) => const GameBoardScreenEnhanced()),
     );
   }
 
