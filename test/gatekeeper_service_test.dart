@@ -1,8 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_service.dart';
 import 'package:cyber_tycoon/gatekeeper/gatekeeper_result.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mockito/mockito.dart';
 
 /// Gatekeeper Service Tests
 /// Verifies 5-minute threshold and proper offline detection

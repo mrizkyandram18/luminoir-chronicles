@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 
 /// Centralized manager for Lottie effects and floating notifications
 class EffectsManager {

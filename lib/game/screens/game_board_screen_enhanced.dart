@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game_controller.dart';
 import '../models/tile_model.dart';
+import '../models/player_model.dart';
 import '../widgets/hud_overlay.dart';
 import '../widgets/action_panel.dart';
 import '../animations/effects_manager.dart';
