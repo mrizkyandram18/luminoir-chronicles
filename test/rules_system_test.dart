@@ -224,5 +224,36 @@ void main() {
       // We can't easily wait for the async endGame here without more mocks,
       // but we've verified the code implementation.
     });
+
+    test('START Bonus: Passing + Landing should equal 300 total', () async {
+      // Setup: 1 step behind START (node_19)
+      controller.currentPlayer.nodeId = 'node_19';
+      controller.currentPlayer.position = 19;
+      controller.currentPlayer.credits = 1000;
+
+      // 1. Move 1 step forward to land on START (node_0)
+      await controller.testMovePlayer(1);
+
+      // Result: Passing (200) + Landing (100) = 300
+      expect(
+        controller.currentPlayer.credits,
+        1300,
+        reason: 'Should gain 200 Salary + 100 Bonus',
+      );
+      expect(controller.currentPlayer.position, 0);
+    });
+
+    test('Event: Move Backward (Teleport Phase 1)', () async {
+      // Setup: at node_2
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+      controller.currentPlayer.credits = 1000;
+
+      // 1. Move 3 steps backward (should wrap to node_19)
+      await controller.testMovePlayer(3, backward: true);
+
+      expect(controller.currentPlayer.position, 19);
+      expect(controller.currentPlayer.nodeId, 'node_19');
+    });
   });
 }

@@ -503,6 +503,10 @@ class GameController extends ChangeNotifier {
 
     _handleTileLanding();
 
+    // After resolution, check if player went bankrupt during landing (e.g. paid rent)
+    await _checkGameOverCondition();
+    if (_matchEnded) return;
+
     // SYNC TO SUPABASE (Only if not practice)
     if (gameMode != GameMode.practice) {
       await _supabase.upsertPlayer(currentPlayer);
@@ -519,9 +523,30 @@ class GameController extends ChangeNotifier {
     await _checkGameOverCondition();
   }
 
-  Future<void> _moveCurrentPlayer(int steps) async {
+  Future<void> _moveCurrentPlayer(int steps, {bool backward = false}) async {
     // Graph Traversal Logic
     String currentId = currentPlayer.nodeId;
+
+    if (backward) {
+      // Phase 1: Simple teleport for backward movement
+      // Calculate new index in the 20-node loop
+      int currentIdx;
+      try {
+        currentIdx = int.parse(currentId.split('_').last);
+      } catch (e) {
+        currentIdx = 0;
+      }
+
+      int newIdx = (currentIdx - steps) % 20;
+      if (newIdx < 0) newIdx += 20;
+
+      currentId = 'node_$newIdx';
+      currentPlayer.nodeId = currentId;
+      currentPlayer.position = newIdx;
+
+      _safeNotifyListeners();
+      return;
+    }
 
     for (int i = 0; i < steps; i++) {
       BoardNode? node = _boardGraph.getNode(currentId);
@@ -541,8 +566,9 @@ class GameController extends ChangeNotifier {
 
         // Check for Passing Start (Salary)
         if (currentPlayer.position == 0) {
-          // Assuming node_0 is start
-          currentPlayer.credits += 200; // Salary
+          // RULE: Passing START grants basic Salary
+          // Total if landing exactly: Salary (200) + Bonus (100) = 300
+          currentPlayer.credits += 200;
           _lastEffectMessage = "Passed Start! +200 Credits";
         }
 
@@ -563,6 +589,12 @@ class GameController extends ChangeNotifier {
   /// Force the next turn (Forced skip / administrative / test)
   void forceNextTurn() {
     _nextTurn();
+  }
+
+  @visibleForTesting
+  Future<void> testMovePlayer(int steps, {bool backward = false}) async {
+    await _moveCurrentPlayer(steps, backward: backward);
+    _handleTileLanding();
   }
 
   void _nextTurn() {
@@ -791,10 +823,12 @@ class GameController extends ChangeNotifier {
 
     switch (node.type) {
       case NodeType.start:
+        // RULE: Landing bonus is separate from Passing Salary
+        // Passing (200) + Landing (100) = 300 Total
         currentPlayer.score += (200 * multiplier);
         currentPlayer.credits += 100;
         _lastEffectMessage =
-            "Recouped! +${200 * multiplier} Score, +100 Credits";
+            "Exact Landing Bonus! +${200 * multiplier} Score, +100 Credits";
         break;
       case NodeType.minigame:
         int reward = 200 * multiplier;
@@ -859,9 +893,7 @@ class GameController extends ChangeNotifier {
         _moveCurrentPlayer(card.value);
         break;
       case EventCardType.moveBackward:
-        // Implement reverse logic? For mvp just ignore or move forward
-        // Graph reverse is hard without prev links.
-        // TODO: Implement reverse graph
+        _moveCurrentPlayer(card.value, backward: true);
         break;
     }
 
