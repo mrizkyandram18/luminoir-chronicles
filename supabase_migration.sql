@@ -1,15 +1,42 @@
--- Add gems column to players table
+-- COMPREHENSIVE MIGRATION SCRIPT
+-- Run this in Supabase SQL Editor to ensure all tables have required columns.
+
+-- 1. PLAYERS TABLE
 ALTER TABLE public.players 
-ADD COLUMN IF NOT EXISTS gems INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS gems INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT 'node_0',
+ADD COLUMN IF NOT EXISTS color_value INTEGER DEFAULT 4280391411, -- Default blue-ish
+ADD COLUMN IF NOT EXISTS score_multiplier INTEGER DEFAULT 1,
+ADD COLUMN IF NOT EXISTS is_human BOOLEAN DEFAULT true;
 
--- Optional: If you also want to track gems in room_players (for multiplayer)
+-- 2. GAME_ROOMS TABLE
+ALTER TABLE public.game_rooms 
+ADD COLUMN IF NOT EXISTS max_players INTEGER DEFAULT 4,
+ADD COLUMN IF NOT EXISTS board_state JSONB DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS winner_child_id TEXT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS current_turn_child_id TEXT DEFAULT NULL;
+
+-- 3. ROOM_PLAYERS TABLE
 ALTER TABLE public.room_players 
-ADD COLUMN IF NOT EXISTS gems INTEGER DEFAULT 0;
+ADD COLUMN IF NOT EXISTS gems INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT 'node_0',
+ADD COLUMN IF NOT EXISTS score_multiplier INTEGER DEFAULT 1,
+ADD COLUMN IF NOT EXISTS is_connected BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS last_action_at TIMESTAMPTZ DEFAULT NOW(),
+ADD COLUMN IF NOT EXISTS joined_at TIMESTAMPTZ DEFAULT NOW();
 
--- Add node_id column to players table (for Graph Board)
-ALTER TABLE public.players 
-ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT 'node_0';
+-- 4. PROPERTIES TABLE
+-- Ensure this table exists with tile_id as PK
+CREATE TABLE IF NOT EXISTS public.properties (
+  tile_id INTEGER PRIMARY KEY,
+  owner_id TEXT REFERENCES public.players(id),
+  upgrade_level INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Optional: Track node_id in room_players
-ALTER TABLE public.room_players 
-ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT 'node_0';
+-- 5. GAME_STATE TABLE
+CREATE TABLE IF NOT EXISTS public.game_state (
+  id TEXT PRIMARY KEY,
+  current_player_index INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
