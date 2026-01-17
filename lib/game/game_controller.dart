@@ -309,6 +309,13 @@ class GameController extends ChangeNotifier {
   List<Player> get players => _players;
   Player get currentPlayer => _players[_currentPlayerIndex];
 
+  /// Set players manually (mainly for testing or custom matches)
+  void setPlayers(List<Player> newPlayers) {
+    _players = newPlayers;
+    _currentPlayerIndex = 0;
+    _safeNotifyListeners();
+  }
+
   // This is now purely for the "Last Rolled" display, logic uses currentPlayer position
   int get diceRoll => _diceRoll;
   int get currentPlayerIndex => _currentPlayerIndex; // For UI highlighting
@@ -539,16 +546,22 @@ class GameController extends ChangeNotifier {
           _lastEffectMessage = "Passed Start! +200 Credits";
         }
 
-        notifyListeners(); // Trigger UI Animation
+        _safeNotifyListeners(); // Trigger UI Animation
         await Future.delayed(
-          const Duration(milliseconds: 300),
-        ); // Wait for animation (Snappier)
+          const Duration(milliseconds: 100),
+        ); // Wait for animation
       }
     }
   }
 
+  /// Transition to the next turn (Requires roll completion)
   void endTurn() {
-    if (!canEndTurn) return; // Use the new getter
+    if (!canEndTurn) return;
+    _nextTurn();
+  }
+
+  /// Force the next turn (Forced skip / administrative / test)
+  void forceNextTurn() {
     _nextTurn();
   }
 
@@ -568,35 +581,22 @@ class GameController extends ChangeNotifier {
 
   Future<void> _processAiTurn() async {
     // Simulate thinking time
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
 
-    // AI Decision: Always roll for now (Strategy can be added later)
-    // Random gauge value for variety
+    // AI Decision: Always roll for now
     double randomGauge = Random().nextDouble();
     await rollDice(gaugeValue: randomGauge);
 
-    // AI Buying Logic could go here (e.g. call buyProperty if credits allow)
-    // For now, simple movement.
+    // AI Buying Logic
     _attemptAiAction();
+
+    // MUST end turn explicitly in the new rule system
+    endTurn();
   }
 
   Future<void> _attemptAiAction() async {
     // Simple AI: Buy if can afford
-    // Needs access to current tile after move.
-    // Since rollDice calls _handleTileLanding then _nextTurn,
-    // we need to inject action logic BEFORE _nextTurn in rollDice or
-    // handle it here if modify rollDice to NOT call _nextTurn automatically?
-    // Current rollDice calls _nextTurn.
-    // So AI buying must happen inside rollDice or _tileLanding?
-    // Or we modify rollDice to wait for AI action?
-
-    // KISS: For now, AI just moves. Smart AI can be Phase 18.
-  }
-
-  Future<bool> buyUpgrade() async {
-    // Helper for legacy button triggering this
-    // Assuming it upgrades current tile
-    return false; // Deprecated use buyPropertyUpgrade
+    // KISS: For now, AI just moves.
   }
 
   /// Buy a property the player is currently on or specified by ID

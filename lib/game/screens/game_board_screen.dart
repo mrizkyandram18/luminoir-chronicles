@@ -429,8 +429,12 @@ class GameBoardScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        final game = context.read<GameController>();
-                        game.buyUpgrade();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Tycoon Boosts coming soon!"),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
                       },
                       child: Column(
                         children: [
