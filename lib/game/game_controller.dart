@@ -673,23 +673,54 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> _processAiTurn() async {
-    // Simulate thinking time
+    if (_isDisposed || _matchEnded) return;
+
     await Future.delayed(const Duration(seconds: 1));
 
-    // AI Decision: Always roll for now
+    if (!canRoll) return;
+
     double randomGauge = Random().nextDouble();
     await rollDice(gaugeValue: randomGauge);
 
-    // AI Buying Logic
-    _attemptAiAction();
+    if (_matchEnded) return;
 
-    // MUST end turn explicitly in the new rule system
-    endTurn();
+    await _attemptAiAction();
+
+    if (canEndTurn) {
+      endTurn();
+    }
   }
 
   Future<void> _attemptAiAction() async {
-    // Simple AI: Buy if can afford
-    // KISS: For now, AI just moves.
+    if (_isDisposed || _matchEnded) return;
+    if (_isMoving) return;
+    if (_actionTakenThisTurn) return;
+
+    final String nodeId = currentPlayer.nodeId;
+    final BoardNode? node = _boardGraph.getNode(nodeId);
+    if (node == null || node.type != NodeType.property) return;
+
+    int tileId;
+    try {
+      tileId = int.parse(nodeId.split('_').last);
+    } catch (_) {
+      return;
+    }
+
+    final PropertyDetails? prop = _properties[nodeId];
+    if (prop == null) return;
+
+    if (prop.ownerId == null) {
+      await buyProperty(tileId);
+      return;
+    }
+
+    if (prop.ownerId == currentPlayer.id) {
+      await buyPropertyUpgrade(tileId);
+      return;
+    }
+
+    await buyPropertyTakeover(tileId);
   }
 
   /// Buy a property the player is currently on or specified by ID

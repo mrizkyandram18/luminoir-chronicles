@@ -661,6 +661,95 @@ void main() {
         reason: "Score 9000 in Ranked should NOT end game",
       );
     });
+
+    test('AI cannot perform multiple actions per turn', () async {
+      final aiController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        isMultiplayer: false,
+      );
+
+      aiController.setPlayers([
+        Player(
+          id: 'bot1',
+          name: 'Bot1',
+          isHuman: false,
+          position: 0,
+          nodeId: 'node_0',
+          color: const Color(0xFF00FFFF),
+        ),
+      ]);
+
+      await aiController.rollDice(gaugeValue: 0.5);
+
+      aiController.currentPlayer.nodeId = 'node_2';
+      aiController.currentPlayer.position = 2;
+      aiController.currentPlayer.credits = 5000;
+
+      await aiController.buyProperty(2);
+      final firstProp = aiController.properties['node_2'];
+      expect(firstProp?.ownerId, aiController.currentPlayer.id);
+      expect(aiController.actionTakenThisTurn, isTrue);
+
+      final initialLevel = firstProp?.buildingLevel;
+      await aiController.buyPropertyUpgrade(2);
+      expect(
+        aiController.properties['node_2']?.buildingLevel,
+        initialLevel,
+      );
+    });
+
+    test('AI credits never go negative', () async {
+      final aiController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        isMultiplayer: false,
+      );
+
+      aiController.setPlayers([
+        Player(
+          id: 'bot1',
+          name: 'Bot1',
+          isHuman: false,
+          position: 0,
+          nodeId: 'node_0',
+          color: const Color(0xFF00FFFF),
+        ),
+        Player(
+          id: 'bot2',
+          name: 'Bot2',
+          isHuman: false,
+          position: 0,
+          nodeId: 'node_0',
+          color: const Color(0xFFFF0000),
+        ),
+      ]);
+
+      final prop = aiController.properties['node_2']!;
+      aiController.properties['node_2'] = prop.copyWith(
+        ownerId: 'bot2',
+        buildingLevel: 4,
+        hasLandmark: true,
+      );
+
+      final owner = aiController.players.firstWhere((p) => p.id == 'bot2');
+      final ownerStart = owner.credits;
+
+      aiController.currentPlayer.nodeId = 'node_2';
+      aiController.currentPlayer.position = 2;
+      aiController.currentPlayer.credits = 50;
+
+      await aiController.testMovePlayer(0);
+
+      expect(aiController.currentPlayer.credits, 0);
+      expect(owner.credits, ownerStart + 50);
+    });
   });
 }
 
