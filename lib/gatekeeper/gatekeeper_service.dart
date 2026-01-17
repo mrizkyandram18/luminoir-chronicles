@@ -63,8 +63,8 @@ class GatekeeperService extends ChangeNotifier {
       final lastSeenDate = lastSeen.toDate();
       final difference = DateTime.now().difference(lastSeenDate);
 
-      // Active if seen within last 1 MINUTE (Strict realtime monitoring)
-      if (difference.inMinutes.abs() < 1) {
+      // Active if seen within last 5 MINUTES (as per requirements)
+      if (difference.inMinutes.abs() < 5) {
         // Fetch display name if available
         _displayName = data['name'] ?? data['displayName'] ?? childId;
         notifyListeners();

@@ -2,18 +2,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'models/player_model.dart';
 
+/// Enhanced Supabase service with granular sync methods and error recovery
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
-
-  // Realtime channel for broadcasting turns/events if needed
-  // But for simple state, we just listen to the table.
 
   /// Listen to the 'players' table for real-time updates.
   Stream<List<Player>> getPlayersStream() {
     return _client
         .from('players')
         .stream(primaryKey: ['id'])
-        .order('id', ascending: true) // Ensure consistent order
+        .order('id', ascending: true)
         .map((data) => data.map((json) => Player.fromMap(json)).toList());
   }
 
@@ -35,6 +33,50 @@ class SupabaseService {
       await _client.from('players').upsert(player.toMap());
     } catch (e) {
       debugPrint("Supabase Error upserting player: $e");
+      rethrow;
+    }
+  }
+
+  /// Update player position only (granular sync for animations)
+  Future<void> updatePlayerPosition(String playerId, int newPosition) async {
+    try {
+      await _client
+          .from('players')
+          .update({'position': newPosition})
+          .eq('id', playerId);
+    } catch (e) {
+      debugPrint("Supabase Error updating player position: $e");
+      rethrow;
+    }
+  }
+
+  /// Update player credits (granular sync for buy actions)
+  Future<void> updatePlayerCredits(String playerId, int credits) async {
+    try {
+      await _client
+          .from('players')
+          .update({'credits': credits})
+          .eq('id', playerId);
+    } catch (e) {
+      debugPrint("Supabase Error updating player credits: $e");
+      rethrow;
+    }
+  }
+
+  /// Update player score and multiplier (granular sync for upgrades)
+  Future<void> updatePlayerScore(
+    String playerId,
+    int score,
+    int scoreMultiplier,
+  ) async {
+    try {
+      await _client
+          .from('players')
+          .update({'score': score, 'score_multiplier': scoreMultiplier})
+          .eq('id', playerId);
+    } catch (e) {
+      debugPrint("Supabase Error updating player score: $e");
+      rethrow;
     }
   }
 
@@ -60,6 +102,7 @@ class SupabaseService {
       });
     } catch (e) {
       debugPrint("Supabase Error upserting property: $e");
+      rethrow;
     }
   }
 
@@ -68,21 +111,25 @@ class SupabaseService {
     for (final p in defaults) {
       await upsertPlayer(p);
     }
-    // Also reset properties if we had a way to clear table or set owners to null
-    // For now, MVP assumes manual cleanup or persistent world.
+    // Reset properties by deleting all
+    try {
+      await _client.from('properties').delete().neq('tile_id', -1);
+    } catch (e) {
+      debugPrint("Supabase Error resetting properties: $e");
+    }
   }
 
   /// Save Global Game State (Turn number, Deck, etc.)
-  /// For MVP, mainly saving 'currentPlayerIndex'.
   Future<void> saveGameState(int currentPlayerIndex) async {
     try {
       await _client.from('game_state').upsert({
-        'id': 'current_session', // Single session for MVP
+        'id': 'current_session',
         'current_player_index': currentPlayerIndex,
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       debugPrint("Supabase Error saving game state: $e");
+      rethrow;
     }
   }
 
