@@ -347,6 +347,96 @@ void main() {
       );
     });
 
+    test('Rent payment caps at available credits', () async {
+      final prop = controller.properties['node_2']!;
+      controller.properties['node_2'] = prop.copyWith(
+        ownerId: 'p2',
+        buildingLevel: 4,
+        hasLandmark: true,
+      );
+
+      final owner = controller.players.firstWhere((p) => p.id == 'p2');
+      final ownerStart = owner.credits;
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+      controller.currentPlayer.credits = 50;
+
+      await controller.testMovePlayer(0);
+
+      expect(controller.currentPlayer.credits, 0);
+      expect(owner.credits, ownerStart + 50);
+    });
+
+    test('Credits never go negative after penalty', () async {
+      controller.currentPlayer.nodeId = 'node_7';
+      controller.currentPlayer.position = 7;
+      controller.currentPlayer.credits = 10;
+
+      await controller.testMovePlayer(0);
+
+      expect(controller.currentPlayer.credits, 0);
+    });
+
+    test('Bankruptcy triggers loss in ranked mode', () async {
+      final rankedController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        gameMode: GameMode.ranked,
+      );
+
+      rankedController.setPlayers([
+        Player(
+          id: 'p1',
+          name: 'You',
+          isHuman: true,
+          position: 0,
+          nodeId: 'node_0',
+          color: const Color(0xFF00FFFF),
+        ),
+        Player(
+          id: 'p2',
+          name: 'P2',
+          isHuman: true,
+          position: 0,
+          nodeId: 'node_0',
+          color: const Color(0xFFFF0000),
+        ),
+      ]);
+
+      final prop = rankedController.properties['node_2']!;
+      rankedController.properties['node_2'] = prop.copyWith(
+        ownerId: 'p2',
+        buildingLevel: 4,
+        hasLandmark: true,
+      );
+      rankedController.currentPlayer.nodeId = 'node_2';
+      rankedController.currentPlayer.position = 2;
+      rankedController.currentPlayer.credits = 10;
+
+      await rankedController.testMovePlayer(0);
+
+      expect(rankedController.matchEnded, isTrue);
+    });
+
+    test('Practice mode does not end the game on bankruptcy', () async {
+      final prop = controller.properties['node_2']!;
+      controller.properties['node_2'] = prop.copyWith(
+        ownerId: 'p2',
+        buildingLevel: 4,
+        hasLandmark: true,
+      );
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+      controller.currentPlayer.credits = 10;
+
+      await controller.testMovePlayer(0);
+
+      expect(controller.matchEnded, isFalse);
+    });
+
     test('Mode Restriction: Manual save only in Practice', () async {
       // Create a Ranked controller
       final rankedController = GameController(

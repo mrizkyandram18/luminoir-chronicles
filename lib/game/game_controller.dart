@@ -599,6 +599,47 @@ class GameController extends ChangeNotifier {
     await _handleTileLanding();
   }
 
+  int _transferCredits({
+    required Player from,
+    Player? to,
+    required int amount,
+  }) {
+    if (amount <= 0) return 0;
+    final int actualPaid = min(from.credits, amount);
+    if (actualPaid == 0) return 0;
+
+    from.credits -= actualPaid;
+    if (to != null && to != from) {
+      to.credits += actualPaid;
+    }
+
+    return actualPaid;
+  }
+
+  Future<void> _checkBankruptcy({
+    required Player player,
+    required int requiredAmount,
+    required int actualPaid,
+  }) async {
+    if (_matchEnded || requiredAmount <= 0) return;
+    final bool unableToPay = actualPaid < requiredAmount;
+    if (player.credits == 0 && unableToPay) {
+      if (gameMode == GameMode.practice) {
+        return;
+      }
+
+      _lastEffectMessage = "BANKRUPT! ${player.name} has lost.";
+      final remainingPlayers = _players.where((p) => p.id != player.id).toList();
+      String? winnerId;
+      if (remainingPlayers.isNotEmpty) {
+        remainingPlayers.sort((a, b) => b.credits.compareTo(a.credits));
+        winnerId = remainingPlayers.first.id;
+      }
+
+      await endGame(winnerId: winnerId);
+    }
+  }
+
   void _nextTurn() {
     _canEndTurn = false;
     _actionTakenThisTurn = false;
@@ -659,7 +700,15 @@ class GameController extends ChangeNotifier {
     if (prop == null || prop.ownerId != null) return;
 
     if (currentPlayer.credits >= prop.baseValue) {
-      currentPlayer.credits -= prop.baseValue;
+      final paid = _transferCredits(
+        from: currentPlayer,
+        amount: prop.baseValue,
+      );
+      await _checkBankruptcy(
+        player: currentPlayer,
+        requiredAmount: prop.baseValue,
+        actualPaid: paid,
+      );
       _actionTakenThisTurn = true;
       _lastEffectMessage = "Purchased ${prop.nodeId}!";
 
@@ -717,7 +766,15 @@ class GameController extends ChangeNotifier {
     int cost = prop.upgradeCost;
 
     if (currentPlayer.credits >= cost) {
-      currentPlayer.credits -= cost;
+      final paid = _transferCredits(
+        from: currentPlayer,
+        amount: cost,
+      );
+      await _checkBankruptcy(
+        player: currentPlayer,
+        requiredAmount: cost,
+        actualPaid: paid,
+      );
       _actionTakenThisTurn = true;
       final newLevel = prop.buildingLevel + 1;
       final isLandmark = newLevel >= 4;
@@ -785,13 +842,19 @@ class GameController extends ChangeNotifier {
         (p) => p?.id == prop.ownerId,
         orElse: () => null,
       );
+      final paid = _transferCredits(
+        from: currentPlayer,
+        to: previousOwner,
+        amount: cost,
+      );
+      await _checkBankruptcy(
+        player: currentPlayer,
+        requiredAmount: cost,
+        actualPaid: paid,
+      );
 
-      currentPlayer.credits -= cost;
-      if (previousOwner != null) {
-        previousOwner.credits += cost;
-        if (gameMode != GameMode.practice) {
-          await _supabase.upsertPlayer(previousOwner);
-        }
+      if (previousOwner != null && gameMode != GameMode.practice) {
+        await _supabase.upsertPlayer(previousOwner);
       }
 
       _lastEffectMessage = "Takeover Successful!";
@@ -843,9 +906,18 @@ class GameController extends ChangeNotifier {
         break;
       case NodeType.prison:
         int penalty = 150 * multiplier;
-        currentPlayer.credits = max(0, currentPlayer.credits - penalty);
+        final paid = _transferCredits(
+          from: currentPlayer,
+          amount: penalty,
+        );
         currentPlayer.score = max(0, currentPlayer.score - 50);
-        _lastEffectMessage = "System Error! -$penalty Credits";
+        await _checkBankruptcy(
+          player: currentPlayer,
+          requiredAmount: penalty,
+          actualPaid: paid,
+        );
+        if (_matchEnded) return;
+        _lastEffectMessage = "System Error! -$paid Credits";
         break;
       case NodeType.event:
         await _handleEventCardLanding();
@@ -862,11 +934,19 @@ class GameController extends ChangeNotifier {
             final rent = prop.currentRent * owner.scoreMultiplier;
 
             // Immediate Payment Rule with Bankruptcy check
-            final actualPayment = min(currentPlayer.credits, rent);
-            currentPlayer.credits -= actualPayment;
-            owner.credits += actualPayment;
+            final actualPayment = _transferCredits(
+              from: currentPlayer,
+              to: owner,
+              amount: rent,
+            );
+            await _checkBankruptcy(
+              player: currentPlayer,
+              requiredAmount: rent,
+              actualPaid: actualPayment,
+            );
+            if (_matchEnded) return;
 
-            if (currentPlayer.credits <= 0 && rent > actualPayment) {
+            if (actualPayment < rent) {
               _lastEffectMessage =
                   "BANKRUPT! Paid $actualPayment CR to ${owner.name}";
             } else {
@@ -900,7 +980,15 @@ class GameController extends ChangeNotifier {
         currentPlayer.credits += card.value;
         break;
       case EventCardType.loseCredits:
-        currentPlayer.credits = max(0, currentPlayer.credits - card.value);
+        final paid = _transferCredits(
+          from: currentPlayer,
+          amount: card.value,
+        );
+        await _checkBankruptcy(
+          player: currentPlayer,
+          requiredAmount: card.value,
+          actualPaid: paid,
+        );
         break;
       case EventCardType.moveForward:
         await _moveCurrentPlayer(card.value);
@@ -920,6 +1008,7 @@ class GameController extends ChangeNotifier {
         break;
     }
 
+    if (_matchEnded) return;
     _lastEffectMessage = "EVENT: ${card.title}";
   }
 
