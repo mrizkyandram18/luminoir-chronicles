@@ -56,7 +56,8 @@ class GameBoardScreenEnhanced extends StatelessWidget {
                     isAgentActive: true, // TODO: Get from gatekeeper
                     canBuyProperty: _canBuyProperty(controller),
                     canUpgradeProperty: _canUpgradeProperty(controller),
-                    onRollDice: () => _handleRollDice(context, controller),
+                    onRollDice: (val) =>
+                        _handleRollDice(context, controller, val),
                     onBuyProperty: () =>
                         _handleBuyProperty(context, controller),
                     onUpgradeProperty: () =>
@@ -309,8 +310,9 @@ class GameBoardScreenEnhanced extends StatelessWidget {
   Future<void> _handleRollDice(
     BuildContext context,
     GameController controller,
+    double gaugeValue,
   ) async {
-    await controller.rollDice();
+    await controller.rollDice(gaugeValue: gaugeValue);
 
     // Show Event Card if triggered
     if (context.mounted && controller.currentEventCard != null) {

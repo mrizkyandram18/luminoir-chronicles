@@ -4,7 +4,12 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ## 🚀 Features
 
-### Phase 1: Core Loop
+### Phase 1: Core Redesign (Graph & Dice) 🎲
+- **Graph-Based Board**: Replaced linear list with `BoardGraph` and `BoardNode` for complex pathing.
+- **Interactive Dice**: "Hold-to-Charge" mechanics for skill-based rolling (biased probability).
+- **Rich Properties**: `PropertyDetails` model supporting building levels and landmarks.
+
+### Phase 1.1: Core Loop (Legacy)
 - **Isometric Board**: 2.5D visual style with neon aesthetics.
 - **Procedural Generation**: Rectangular path generation for 20 tiles.
 - **Dice Mechanics**: Animated roll and token movement.

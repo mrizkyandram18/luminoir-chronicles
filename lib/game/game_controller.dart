@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'models/tile_model.dart';
+import 'models/tile_model.dart'; // Keeping for UI Compat
 import 'models/player_model.dart';
 import 'models/event_card_model.dart';
 import 'models/room_model.dart';
+import 'models/board_node.dart';
+import 'models/property_details.dart';
+import 'graph/board_graph.dart';
 import '../gatekeeper/gatekeeper_service.dart';
 import 'supabase_service.dart';
 import 'services/multiplayer_service.dart';
@@ -22,18 +25,16 @@ class GameController extends ChangeNotifier {
   // Phase 6: Supabase
   final SupabaseService _supabase;
 
+  // Phase 1 (Redesign): Graph System
+  final BoardGraph _boardGraph = BoardGraph();
+  final Map<String, PropertyDetails> _properties = {};
+
   // Dynamic IDs from Setup Screen
   final String _currentParentId;
   final String _currentChildId;
 
-  // Total tiles on the board
+  // Total tiles on the board (Legacy support)
   final int totalTiles = 20;
-
-  // Cache the path alignemnts
-  late final List<Alignment> _boardPath;
-
-  // Phase 2: Tile Logic
-  late final List<Tile> _tiles;
 
   // Phase 7: Events & Properties
   final List<EventCard> _eventDeck = [];
@@ -65,13 +66,14 @@ class GameController extends ChangeNotifier {
   }) : _currentParentId = parentId,
        _currentChildId = childId,
        _supabase = supabaseService ?? SupabaseService() {
-    // Initialize multiplayer service ONLY when needed (avoid Supabase.instance in tests)
+    // Initialize properties from graph
+    _initializeProperties();
+
+    // Initialize default players
     if (isMultiplayer) {
       _multiplayerService = multiplayerService ?? MultiplayerService();
     }
 
-    _boardPath = _generateRectangularPath(totalTiles);
-    _tiles = _generateTiles(totalTiles);
     _generateEventDeck();
 
     // Create default players in memory for initial setup if needed
@@ -93,23 +95,14 @@ class GameController extends ChangeNotifier {
     _supabase.getPropertiesStream().listen((propertiesData) {
       for (var data in propertiesData) {
         final int tileId = data['tile_id'];
+        final String nodeId = 'node_$tileId'; // Adapter logic
         final String ownerId = data['owner_id'];
+        final int upgradeLevel = data['upgrade_level'] ?? 0;
 
-        // Find local tile and update owner
-        // Since tiles is List<Tile> and ID matches index in our generation logic...
-        if (tileId >= 0 && tileId < _tiles.length) {
-          // Robustly handle optional 'level' if it's new
-          final int upgradeLevel = data['upgrade_level'] ?? 0;
-
-          // Re-apply Rent Formula for logic consistency on load
-          // Formula: (Price * (Lv + 1)) / 5
-          final baseVal = _tiles[tileId].value;
-          final newRent = (baseVal * (upgradeLevel + 1)) ~/ 5;
-
-          _tiles[tileId] = _tiles[tileId].copyWith(
+        if (_properties.containsKey(nodeId)) {
+          _properties[nodeId] = _properties[nodeId]!.copyWith(
             ownerId: ownerId,
-            upgradeLevel: upgradeLevel,
-            rent: newRent,
+            buildingLevel: upgradeLevel,
           );
         }
       }
@@ -124,6 +117,26 @@ class GameController extends ChangeNotifier {
     // Phase 16: Multiplayer subscriptions
     if (isMultiplayer && roomId != null) {
       _initMultiplayerSubscriptions();
+    }
+  }
+
+  void _initializeProperties() {
+    // Iterate 0-19 to init properties (Simulating graph iteration)
+    for (int i = 0; i < 20; i++) {
+      final id = 'node_$i';
+      final node = _boardGraph.getNode(id);
+      if (node != null && node.type == NodeType.property) {
+        // Init default property details
+        // Calculate base price based on index (Legacy logic ported)
+        int price = 100 + (i * 10);
+        int rent = 20 + (i * 2);
+
+        _properties[id] = PropertyDetails(
+          nodeId: id,
+          baseValue: price,
+          baseRent: rent,
+        );
+      }
     }
   }
 
@@ -236,12 +249,72 @@ class GameController extends ChangeNotifier {
   int get currentPlayerIndex => _currentPlayerIndex; // For UI highlighting
 
   String? get lastEffectMessage => _lastEffectMessage;
-  List<Tile> get tiles => _tiles;
+
+  // ADAPTER: Tiles for legacy UI
+  // Renders the board based on Graph + PropertyDetails
+  List<Tile> get tiles {
+    List<Tile> uiTiles = [];
+    for (int i = 0; i < 20; i++) {
+      String id = 'node_$i';
+      BoardNode? node = _boardGraph.getNode(id);
+      if (node == null) continue;
+
+      // Map NodeType to TileType
+      TileType type;
+      if (node.type == NodeType.start) {
+        type = TileType.start;
+      } else if (node.type == NodeType.property) {
+        type = TileType.property;
+      } else if (node.type == NodeType.event) {
+        type = TileType.event;
+      } else if (node.type == NodeType.minigame) {
+        type = TileType.reward; // Mapping minigame to Reward for now
+      } else if (node.type == NodeType.prison) {
+        type = TileType.penalty; // Mapping prison to Penalty
+      } else {
+        type = TileType.neutral;
+      }
+
+      // Get Property Data if exists
+      PropertyDetails? props = _properties[id];
+
+      uiTiles.add(
+        Tile(
+          id: i,
+          type: type,
+          label: node.label,
+          value: props?.baseValue ?? 0,
+          rent: props?.currentRent ?? 0,
+          ownerId: props?.ownerId,
+          upgradeLevel: props?.buildingLevel ?? 0,
+        ),
+      );
+    }
+    return uiTiles;
+  }
 
   // Expose the calculated path for the UI to render tiles
-  List<Alignment> get boardPath => _boardPath;
+  // ADAPTER: Calculate path from Nodes
+  List<Alignment> get boardPath {
+    List<Alignment> path = [];
+    for (int i = 0; i < 20; i++) {
+      var node = _boardGraph.getNode('node_$i');
+      if (node != null) path.add(node.position);
+    }
+    return path;
+  }
 
-  Alignment getPlayerAlignment(Player p) => _boardPath[p.position];
+  Alignment getPlayerAlignment(Player p) {
+    // Use p.nodeId if available, fallback to p.position for legacy
+    var node = _boardGraph.getNode(p.nodeId);
+    if (node != null) return node.position;
+
+    // Fallback
+    if (p.position >= 0 && p.position < boardPath.length) {
+      return boardPath[p.position];
+    }
+    return Alignment.center;
+  }
 
   @override
   void dispose() {
@@ -250,7 +323,7 @@ class GameController extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> rollDice() async {
+  Future<void> rollDice({double gaugeValue = 0.5}) async {
     // Phase 16: Check if it's my turn in multiplayer mode
     if (isMultiplayer && !_isMyTurn) {
       _lastEffectMessage = "Wait for your turn!";
@@ -272,7 +345,23 @@ class GameController extends ChangeNotifier {
     _lastEffectMessage = null; // Clear previous message
     notifyListeners();
 
-    _diceRoll = Random().nextInt(6) + 1; // 1-6
+    // Interactive Roll Logic (KISS: Simple bias)
+    int roll;
+    if (gaugeValue < 0.4) {
+      // Bias towards Low (1-3)
+      // 70% chance of 1-3, 30% chance of 4-6
+      bool hit = Random().nextDouble() < 0.7;
+      roll = hit ? (Random().nextInt(3) + 1) : (Random().nextInt(3) + 4);
+    } else if (gaugeValue > 0.6) {
+      // Bias towards High (4-6)
+      bool hit = Random().nextDouble() < 0.7;
+      roll = hit ? (Random().nextInt(3) + 4) : (Random().nextInt(3) + 1);
+    } else {
+      // Pure Random
+      roll = Random().nextInt(6) + 1;
+    }
+
+    _diceRoll = roll;
     _moveCurrentPlayer(_diceRoll);
     notifyListeners();
 
@@ -285,179 +374,50 @@ class GameController extends ChangeNotifier {
     // SYNC TO SUPABASE
     await _supabase.upsertPlayer(currentPlayer);
 
-    // Turn Management:
-    // For MVP, we cycle turn locally index, but we should store this in DB ideally.
-    // For now, if we assume players are ordered, 'next turn' is logic derived
-    // or we update a 'isTurn' field.
-    // Let's implement simple index cycling visually for now, but in real multiplayer
-    // we need to set 'isTurn' or similar.
-    // ...
+    // Auto-save game state on move
+    await saveGame();
+
     _nextTurn();
   }
 
   void _moveCurrentPlayer(int steps) {
-    currentPlayer.position = (currentPlayer.position + steps) % totalTiles;
-    // We update Supabase AFTER the whole move is done to minimize jitters?
-    // Or intermediate? Let's verify final state.
+    // Graph Traversal Logic
+    String currentId = currentPlayer.nodeId;
+
+    for (int i = 0; i < steps; i++) {
+      BoardNode? node = _boardGraph.getNode(currentId);
+      if (node != null && node.nextNodeIds.isNotEmpty) {
+        // Logic for forks would go here. For now, take first.
+        currentId = node.nextNodeIds.first;
+      }
+    }
+
+    currentPlayer.nodeId = currentId;
+    // Sync legacy integer position for backward compatibility
+    try {
+      currentPlayer.position = int.parse(currentId.split('_').last);
+    } catch (e) {
+      currentPlayer.position = 0;
+    }
   }
 
   void _nextTurn() {
     // TODO: Sync Turn Index to DB if we want strict turn enforcement.
-    // For this Phase, we just cycle locally for the view, but since everyone
-    // sees the same list, we need a way to verify who's turn it is.
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
     notifyListeners();
   }
 
-  /// Generates a list of Alignments forming a rectangular loop (20 tiles).
-  /// Start: Bottom-Right (Index 0).
-  /// Order: Bottom-Right -> Bottom-Left -> Top-Left -> Top-Right -> Bottom-Right.
-  ///
-  /// Logic:
-  /// - Bottom Side: Indices 0-5
-  /// - Left Side: Indices 5-10
-  /// - Top Side: Indices 10-15
-  /// - Right Side: Indices 15-20 (Loops back to 0)
-  List<Alignment> _generateRectangularPath(int count) {
-    final List<Alignment> path = [];
-
-    // We strictly want 20 tiles.
-    // 5 tiles per side roughly.
-    // Let's manually define the lerping to ensure exactly count items.
-    // Side 1: Bottom (Right to Left). x: 1.0 -> -1.0, y: 1.0
-    // Side 2: Left (Bottom to Top).   x: -1.0, y: 1.0 -> -1.0
-    // Side 3: Top (Left to Right).    x: -1.0 -> 1.0, y: -1.0
-    // Side 4: Right (Top to Bottom).  x: 1.0, y: -1.0 -> 1.0
-
-    // However, distributing 20 points evenly along a perimeter of length 8 (2+2+2+2)
-    // 20 points means step size = Perimeter / 20 = 8 / 20 = 0.4.
-    //
-    // Let's walk the perimeter:
-    // Start at (1.0, 1.0) -> Bottom Right.
-    // 0: (1.0, 1.0)
-    // 1: (0.6, 1.0)
-    // 2: (0.2, 1.0)
-    // 3: (-0.2, 1.0)
-    // 4: (-0.6, 1.0)
-    // 5: (-1.0, 1.0) -> Bottom Left Corner
-    // 6: (-1.0, 0.6)
-    // ...
-
-    // We can just execute this walk.
-    // NOTE: We use 0.9 instead of 1.0 to keep it inside the screen padding slightly.
-    const double limit = 0.85;
-    const double step = (limit * 2) / 5; // 5 steps to cross one side?
-    // Side length is 2*limit.
-    // We need 5 intervals per side to get 20 tiles?
-    // 4 sides * 5 tiles = 20. Correct.
-
-    // Bottom: (limit, limit) -> (-limit, limit)
-    for (int i = 0; i < 5; i++) {
-      path.add(Alignment(limit - (i * step), limit));
-    }
-
-    // Left: (-limit, limit) -> (-limit, -limit)
-    for (int i = 0; i < 5; i++) {
-      path.add(Alignment(-limit, limit - (i * step)));
-    }
-
-    // Top: (-limit, -limit) -> (limit, -limit)
-    for (int i = 0; i < 5; i++) {
-      path.add(Alignment(-limit + (i * step), -limit));
-    }
-
-    // Right: (limit, -limit) -> (limit, limit)
-    for (int i = 0; i < 5; i++) {
-      path.add(Alignment(limit, -limit + (i * step)));
-    }
-
-    return path;
-  }
-
-  /// Generates the 20 tiles with specific rules.
-  List<Tile> _generateTiles(int count) {
-    return List.generate(count, (index) {
-      if (index == 0) {
-        return Tile(
-          id: index,
-          type: TileType.start,
-          label: 'START',
-          value: 200,
-        );
-      }
-
-      // Every 5th tile is a REWARD
-      if (index % 5 == 0) {
-        return Tile(
-          id: index,
-          type: TileType.reward,
-          label: 'DATA\nCACHE',
-          value: 50,
-        );
-      }
-
-      // Every 7th tile is a PENALTY
-      if (index % 7 == 0) {
-        return Tile(
-          id: index,
-          type: TileType.penalty,
-          label: 'FIRE\nWALL',
-          value: -50,
-        );
-      }
-
-      // Event Tiles
-      if (index == 3 || index == 12 || index == 18) {
-        return Tile(id: index, type: TileType.event, label: 'EVENT', value: 0);
-      }
-
-      // Properties: Indices 1, 2, 4, 6, 8, 9, 11, 13, 16, 17, 19
-      // We will make any neutral tile a property for now.
-      return Tile(
-        id: index,
-        type: TileType.property,
-        label: 'NODE #$index',
-        value: 100 + (index * 10), // Price varries
-        rent: 20 + (index * 2), // Rent varies
-      );
-    });
-  }
-
   Future<bool> buyUpgrade() async {
-    // Phase 5: Check Gatekeeper
-    final result = await _gatekeeper.isChildAgentActive(
-      _currentParentId,
-      _currentChildId,
-    );
-    if (!result.isSuccess) {
-      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
-      notifyListeners();
-      return false;
-    }
-
-    // Basic Upgrade: Cost 200, adds +1 to Multiplier
-    const int upgradeCost = 200;
-
-    if (currentPlayer.credits >= upgradeCost) {
-      currentPlayer.credits -= upgradeCost;
-      currentPlayer.scoreMultiplier += 1;
-      _lastEffectMessage =
-          "${currentPlayer.name} Upgraded! Multiplier now x${currentPlayer.scoreMultiplier}!";
-      notifyListeners();
-
-      // SYNC
-      await _supabase.upsertPlayer(currentPlayer);
-
-      return true;
-    } else {
-      _lastEffectMessage = "Insufficient Funds! Need 200 Credits.";
-      notifyListeners();
-      return false;
-    }
+    // Helper for legacy button triggering this
+    // Assuming it upgrades current tile
+    return false; // Deprecated use buyPropertyUpgrade
   }
 
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
+    // Convert tileId to nodeId
+    String nodeId = 'node_$tileId';
+
     // Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
@@ -469,32 +429,31 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    final tile = _tiles[tileId];
-    if (tile.type != TileType.property || tile.ownerId != null) return;
+    PropertyDetails? prop = _properties[nodeId];
+    if (prop == null || prop.ownerId != null) return;
 
-    if (currentPlayer.credits >= tile.value) {
-      currentPlayer.credits -= tile.value;
-      _lastEffectMessage = "${currentPlayer.name} purchased ${tile.label}!";
+    if (currentPlayer.credits >= prop.baseValue) {
+      currentPlayer.credits -= prop.baseValue;
+      _lastEffectMessage = "${currentPlayer.name} purchased Node $tileId!";
 
-      // Update local state implicitly handled by stream?
-      // Better to update locally optimistically
-      _tiles[tileId] = _tiles[tileId].copyWith(ownerId: currentPlayer.id);
+      // Update local state
+      _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
 
       notifyListeners();
 
       // Sync Player (Credits) and Property (Owner)
-      // Pass level 0 for new purchase
       await _supabase.upsertPlayer(currentPlayer);
       await _supabase.upsertProperty(tileId, currentPlayer.id, 0);
     } else {
-      _lastEffectMessage = "Insufficient Credits to buy ${tile.label}!";
+      _lastEffectMessage = "Insufficient Credits to buy!";
       notifyListeners();
     }
   }
 
   /// Upgrade a property (Tycoon Mechanic)
-  /// Cost is fixed 200 credits in this new model.
   Future<void> buyPropertyUpgrade(int tileId) async {
+    String nodeId = 'node_$tileId';
+
     // Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
@@ -506,109 +465,99 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    final tile = _tiles[tileId];
-    if (tile.type != TileType.property) return;
-    if (tile.ownerId != currentPlayer.id) {
+    PropertyDetails? prop = _properties[nodeId];
+    if (prop == null) return;
+
+    if (prop.ownerId != currentPlayer.id) {
       _lastEffectMessage = "You don't own this property!";
       notifyListeners();
       return;
     }
 
-    // Limit? Let's say max level 5 means upgradeLevel 4? Or 5 upgrades?
-    // Let's stick to simple "upgradeLevel < 5"
-    if (tile.upgradeLevel >= 5) {
-      _lastEffectMessage = "Property at Max Level!";
+    // Limit building level
+    if (prop.buildingLevel >= 3) {
+      _lastEffectMessage = "Property at Max Building Level!";
+      // TODO: Implement Landmark Level 4 logic later
       notifyListeners();
       return;
     }
 
-    // Fixed Cost per requirement
-    const int upgradeCost = 200;
+    // Logic for cost
+    int cost = prop.upgradeCost;
 
-    if (currentPlayer.credits >= upgradeCost) {
-      currentPlayer.credits -= upgradeCost;
-      final newLevel = tile.upgradeLevel + 1;
+    if (currentPlayer.credits >= cost) {
+      currentPlayer.credits -= cost;
+      final newLevel = prop.buildingLevel + 1;
 
-      // Rent Formula: "rent = basePrice * (upgradeLevel + 1)"
-      // Assuming tile.value is basePrice
-      // Make sure this doesn't bankrupt everyone instantly.
-      // If value is 100, Lv1 Rent = 100 * 2 = 200. That is huge.
-      // I will scale it down by factor of 10 for playability unless user insisted exactly.
-      // User said: "rent = basePrice * (upgradeLevel + 1)"
-      // I will follow it but divide by 5 for balance?
-      // Requirements are "rent = basePrice * (upgradeLevel + 1)".
-      // Let's try following it strictly.
-      final newRent =
-          (tile.value * (newLevel + 1)) ~/
-          5; // Added safety divisor for MVP balance
+      // Update local
+      _properties[nodeId] = prop.copyWith(buildingLevel: newLevel);
 
-      _tiles[tileId] = tile.copyWith(upgradeLevel: newLevel, rent: newRent);
-
-      _lastEffectMessage = "Upgraded ${tile.label} to Lv $newLevel!";
+      _lastEffectMessage = "Upgraded to Lv $newLevel!";
       notifyListeners();
 
       await _supabase.upsertPlayer(currentPlayer);
       await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
     } else {
-      _lastEffectMessage = "Need $upgradeCost Credits to upgrade!";
+      _lastEffectMessage = "Need $cost Credits to upgrade!";
       notifyListeners();
     }
   }
 
   void _handleTileLanding() {
-    final currentTile = _tiles[currentPlayer.position];
+    String currentId = currentPlayer.nodeId;
+    BoardNode? node = _boardGraph.getNode(currentId);
+    if (node == null) return;
+
     final int multiplier = currentPlayer.scoreMultiplier;
 
     // Reset temporary state
     _currentEventCard = null;
 
-    switch (currentTile.type) {
-      case TileType.start:
+    switch (node.type) {
+      case NodeType.start:
         currentPlayer.score += (200 * multiplier);
         currentPlayer.credits += 100;
         _lastEffectMessage =
             "Passed Go! +${200 * multiplier} Score, +100 Credits";
         break;
-      case TileType.reward:
+      case NodeType.minigame:
         currentPlayer.score += (50 * multiplier);
         currentPlayer.credits += 50;
         _lastEffectMessage =
             "Data Cache! +${50 * multiplier} Score, +50 Credits";
         break;
-      case TileType.penalty:
+      case NodeType.prison:
         currentPlayer.score += (-50);
         currentPlayer.credits = max(0, currentPlayer.credits - 50);
         _lastEffectMessage = "Firewall Hit! -50 Score, -50 Credits";
         break;
-      case TileType.event:
+      case NodeType.event:
         _handleEventCardLanding();
         break;
-      case TileType.property:
-        if (currentTile.ownerId == null) {
-          _lastEffectMessage =
-              "Property For Sale: ${currentTile.value} Credits";
-          // UI will see this property and show Buy button
-        } else if (currentTile.ownerId != currentPlayer.id) {
-          // Pay Rent
-          final rent = currentTile.rent * multiplier; // Multiply rent? Why not.
-          currentPlayer.credits = max(0, currentPlayer.credits - rent);
-          // TODO: Pay the owner? For MVP just burn credits.
-          _lastEffectMessage = "Paid Rent: $rent to Owner";
-        } else {
-          _lastEffectMessage = "Welcome back to your node.";
+      case NodeType.property:
+        PropertyDetails? prop = _properties[currentId];
+        if (prop != null) {
+          if (prop.ownerId == null) {
+            _lastEffectMessage = "Property For Sale: ${prop.baseValue} Credits";
+          } else if (prop.ownerId != currentPlayer.id) {
+            // Pay Rent
+            final rent = prop.currentRent * multiplier;
+            currentPlayer.credits = max(0, currentPlayer.credits - rent);
+            _lastEffectMessage = "Paid Rent: $rent to Owner";
+          } else {
+            _lastEffectMessage = "Welcome back to your node.";
+          }
         }
         break;
-      case TileType.neutral:
+      default:
         break;
     }
     notifyListeners();
-    // Consider syncing player here for simple credit updates?
-    // We do explicit sync in rollDice() after this returns.
   }
 
   void _handleEventCardLanding() {
     if (_eventDeck.isEmpty) {
-      _generateEventDeck(); // Reshuffle if needed (shouldn't be empty)
+      _generateEventDeck();
     }
 
     final card = _eventDeck.removeAt(0);
@@ -625,13 +574,12 @@ class GameController extends ChangeNotifier {
         currentPlayer.credits = max(0, currentPlayer.credits - card.value);
         break;
       case EventCardType.moveForward:
-        // Careful of recursion! Just move index, don't trigger landing logic again immediately for MVP simplicity
-        currentPlayer.position =
-            (currentPlayer.position + card.value) % totalTiles;
+        _moveCurrentPlayer(card.value);
         break;
       case EventCardType.moveBackward:
-        currentPlayer.position =
-            (currentPlayer.position - card.value + totalTiles) % totalTiles;
+        // Implement reverse logic? For mvp just ignore or move forward
+        // Graph reverse is hard without prev links.
+        // TODO: Implement reverse graph
         break;
     }
 
@@ -657,11 +605,16 @@ class GameController extends ChangeNotifier {
     }
 
     // 2. Save all properties (Only owned ones)
-    for (final t in _tiles) {
-      if (t.ownerId != null) {
-        await _supabase.upsertProperty(t.id, t.ownerId!, t.upgradeLevel);
+    _properties.forEach((key, prop) async {
+      if (prop.ownerId != null) {
+        int tileId = int.parse(key.split('_').last);
+        await _supabase.upsertProperty(
+          tileId,
+          prop.ownerId!,
+          prop.buildingLevel,
+        );
       }
-    }
+    });
 
     // 3. Save Global State
     await _supabase.saveGameState(_currentPlayerIndex);

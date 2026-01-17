@@ -17,7 +17,7 @@ void main() {
               isAgentActive: true,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -27,14 +27,15 @@ void main() {
         ),
       );
 
-      expect(find.text('ROLL DICE'), findsOneWidget);
+      // DiceGauge shows 'HOLD TO ROLL' when active
+      expect(find.text('HOLD TO ROLL'), findsOneWidget);
       expect(find.text('BUY PROPERTY'), findsOneWidget);
       expect(find.text('UPGRADE'), findsOneWidget);
       expect(find.text('SAVE'), findsOneWidget);
       expect(find.text('LOAD'), findsOneWidget);
     });
 
-    testWidgets('should disable roll button when not player turn', (
+    testWidgets('should show disabled Roll button when not player turn', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -45,7 +46,7 @@ void main() {
               isAgentActive: true,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -55,10 +56,10 @@ void main() {
         ),
       );
 
+      // Checks for the DISABLED button version
       final rollButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'ROLL DICE'),
+        find.byKey(const Key('btn_roll_disabled')),
       );
-
       expect(rollButton.onPressed, isNull);
     });
 
@@ -73,7 +74,7 @@ void main() {
               isAgentActive: false, // Agent offline
               canBuyProperty: true,
               canUpgradeProperty: true,
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -84,13 +85,13 @@ void main() {
       );
 
       final rollButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'ROLL DICE'),
+        find.byKey(const Key('btn_roll_disabled')),
       );
       final buyButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'BUY PROPERTY'),
+        find.byKey(const Key('btn_buy')),
       );
       final upgradeButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'UPGRADE'),
+        find.byKey(const Key('btn_upgrade')),
       );
 
       expect(rollButton.onPressed, isNull);
@@ -109,7 +110,7 @@ void main() {
               isAgentActive: true,
               canBuyProperty: true, // Can buy
               canUpgradeProperty: false,
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -119,10 +120,10 @@ void main() {
         ),
       );
 
-      final buyButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'BUY PROPERTY'),
-      );
+      final buyFinder = find.byKey(const Key('btn_buy'));
+      expect(buyFinder, findsOneWidget);
 
+      final buyButton = tester.widget<ElevatedButton>(buyFinder);
       expect(buyButton.onPressed, isNotNull);
     });
 
@@ -137,7 +138,7 @@ void main() {
               isAgentActive: true,
               canBuyProperty: false,
               canUpgradeProperty: true, // Can upgrade
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -148,14 +149,10 @@ void main() {
       );
 
       // Verify upgrade button exists and is enabled
-      final finder = find.widgetWithText(ElevatedButton, 'UPGRADE');
-      if (finder.evaluate().isNotEmpty) {
-        final upgradeButton = tester.widget<ElevatedButton>(finder);
-        expect(upgradeButton.onPressed, isNotNull);
-      } else {
-        // If not found, pass the test as design may vary
-        expect(true, isTrue);
-      }
+      final upgradeButton = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_upgrade')),
+      );
+      expect(upgradeButton.onPressed, isNotNull);
     });
 
     testWidgets('should show loading state', (WidgetTester tester) async {
@@ -168,7 +165,7 @@ void main() {
               canBuyProperty: false,
               canUpgradeProperty: false,
               isLoading: true, // Loading state
-              onRollDice: () {},
+              onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () {},
@@ -178,15 +175,11 @@ void main() {
         ),
       );
 
-      // Verify buttons are disabled during loading
-      final finder = find.widgetWithText(ElevatedButton, 'ROLL DICE');
-      if (finder.evaluate().isNotEmpty) {
-        final rollButton = tester.widget<ElevatedButton>(finder);
-        expect(rollButton.onPressed, isNull);
-      } else {
-        // If structure changed, test still passes
-        expect(true, isTrue);
-      }
+      // When loading, disabled roll button should be shown instead of gauge
+      final rollButton = tester.widget<ElevatedButton>(
+        find.byKey(const Key('btn_roll_disabled')),
+      );
+      expect(rollButton.onPressed, isNull);
     });
 
     testWidgets('should trigger callbacks when buttons pressed', (
@@ -204,7 +197,7 @@ void main() {
               isAgentActive: true,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              onRollDice: () => rollDiceCalled = true,
+              onRollDice: (val) => rollDiceCalled = true,
               onBuyProperty: () {},
               onUpgradeProperty: () {},
               onSaveGame: () => saveGameCalled = true,
@@ -214,26 +207,23 @@ void main() {
         ),
       );
 
-      // Tap roll dice button by finding text
-      final rollButtons = find.text('ROLL DICE');
-      if (rollButtons.evaluate().isNotEmpty) {
-        await tester.tap(rollButtons.first);
+      // Tap DiceGauge
+      final gaugeFinder = find.byKey(const Key('gauge_roll'));
+      if (gaugeFinder.evaluate().isNotEmpty) {
+        // Simulate tap (down/up)
+        await tester.tap(gaugeFinder);
+        // DiceGauge calls onRelease on tapUp
+        await tester.pumpAndSettle();
         expect(rollDiceCalled, isTrue);
       }
 
       // Tap save button
-      final saveButtons = find.text('SAVE');
-      if (saveButtons.evaluate().isNotEmpty) {
-        await tester.tap(saveButtons.first);
-        expect(saveGameCalled, isTrue);
-      }
+      await tester.tap(find.byKey(const Key('btn_save')));
+      expect(saveGameCalled, isTrue);
 
       // Tap load button
-      final loadButtons = find.text('LOAD');
-      if (loadButtons.evaluate().isNotEmpty) {
-        await tester.tap(loadButtons.first);
-        expect(loadGameCalled, isTrue);
-      }
+      await tester.tap(find.byKey(const Key('btn_load')));
+      expect(loadGameCalled, isTrue);
     });
   });
 }

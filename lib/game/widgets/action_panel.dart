@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dice_gauge.dart';
 
 /// Action panel with gatekeeper-aware buttons
 class ActionPanel extends StatelessWidget {
@@ -7,7 +8,7 @@ class ActionPanel extends StatelessWidget {
   final bool isAgentActive;
   final bool canBuyProperty;
   final bool canUpgradeProperty;
-  final VoidCallback onRollDice;
+  final Function(double) onRollDice; // Updated signature
   final VoidCallback onBuyProperty;
   final VoidCallback onUpgradeProperty;
   final VoidCallback onSaveGame;
@@ -20,7 +21,7 @@ class ActionPanel extends StatelessWidget {
     required this.isAgentActive,
     required this.canBuyProperty,
     required this.canUpgradeProperty,
-    required this.onRollDice,
+    required this.onRollDice, // expects Function(double)
     required this.onBuyProperty,
     required this.onUpgradeProperty,
     required this.onSaveGame,
@@ -43,20 +44,30 @@ class ActionPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildActionButton(
-            label: 'ROLL DICE',
-            icon: Icons.casino,
-            enabled: isMyTurn && isAgentActive && !isLoading,
-            onPressed: onRollDice,
-            color: Colors.cyanAccent,
-            disabledReason: !isAgentActive
-                ? 'Agent Offline'
-                : !isMyTurn
-                ? 'Not Your Turn'
-                : null,
-          ),
+          // DICE GAUGE REPLACEMENT
+          if (isMyTurn && isAgentActive && !isLoading)
+            DiceGauge(
+              key: const Key('gauge_roll'),
+              onRelease: onRollDice,
+              enabled: true,
+            )
+          else
+            _buildActionButton(
+              key: const Key('btn_roll_disabled'),
+              label: 'ROLL DICE',
+              icon: Icons.casino,
+              enabled: false,
+              onPressed: () {}, // Dummy
+              color: Colors.grey,
+              disabledReason: !isAgentActive
+                  ? 'Agent Offline'
+                  : !isMyTurn
+                  ? 'Not Your Turn'
+                  : null,
+            ),
           const SizedBox(height: 12),
           _buildActionButton(
+            key: const Key('btn_buy'),
             label: 'BUY PROPERTY',
             icon: Icons.store,
             enabled: canBuyProperty && isAgentActive && !isLoading,
@@ -70,6 +81,7 @@ class ActionPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _buildActionButton(
+            key: const Key('btn_upgrade'),
             label: 'UPGRADE',
             icon: Icons.upgrade,
             enabled: canUpgradeProperty && isAgentActive && !isLoading,
@@ -86,6 +98,7 @@ class ActionPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildActionButton(
+                  key: const Key('btn_save'),
                   label: 'SAVE',
                   icon: Icons.save,
                   enabled: isAgentActive && !isLoading,
@@ -97,6 +110,7 @@ class ActionPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _buildActionButton(
+                  key: const Key('btn_load'),
                   label: 'LOAD',
                   icon: Icons.folder_open,
                   enabled: isAgentActive && !isLoading,
@@ -113,6 +127,7 @@ class ActionPanel extends StatelessWidget {
   }
 
   Widget _buildActionButton({
+    Key? key,
     required String label,
     required IconData icon,
     required bool enabled,
@@ -124,6 +139,7 @@ class ActionPanel extends StatelessWidget {
     return Tooltip(
       message: disabledReason ?? label,
       child: ElevatedButton.icon(
+        key: key,
         onPressed: enabled ? onPressed : null,
         icon: Icon(icon, size: compact ? 16 : 20),
         label: Text(
