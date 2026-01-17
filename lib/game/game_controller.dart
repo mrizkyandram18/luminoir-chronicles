@@ -435,7 +435,8 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> rollDice({double gaugeValue = 0.5}) async {
-    if (_isDisposed || _matchEnded || !canRoll) return; // Use the new getter
+    if (!_canRoll) return;
+    if (_isDisposed || _matchEnded || _isMoving) return;
 
     // Phase 16: Check if it's my turn in multiplayer mode
     if (isMultiplayer && !_isMyTurn) {
@@ -582,6 +583,7 @@ class GameController extends ChangeNotifier {
 
   /// Transition to the next turn (Requires roll completion)
   void endTurn() {
+    if (_isMoving) return;
     if (!canEndTurn) return;
     _nextTurn();
   }
@@ -601,6 +603,7 @@ class GameController extends ChangeNotifier {
     _canEndTurn = false;
     _actionTakenThisTurn = false;
     _canRoll = true;
+    _isMoving = false;
 
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
     _safeNotifyListeners();
@@ -633,7 +636,7 @@ class GameController extends ChangeNotifier {
 
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
-    if (_actionTakenThisTurn) return;
+    if (_isMoving || _actionTakenThisTurn) return;
 
     // Convert tileId to nodeId
     String nodeId = 'node_$tileId';
@@ -678,7 +681,7 @@ class GameController extends ChangeNotifier {
 
   /// Upgrade a property (Tycoon Mechanic)
   Future<void> buyPropertyUpgrade(int tileId) async {
-    if (_actionTakenThisTurn) return;
+    if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
 
     // Must be on the tile
@@ -742,7 +745,7 @@ class GameController extends ChangeNotifier {
 
   /// Takeover a property from another player (Hostile Takeover)
   Future<void> buyPropertyTakeover(int tileId) async {
-    if (_actionTakenThisTurn) return;
+    if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
 
     // Must be on the tile

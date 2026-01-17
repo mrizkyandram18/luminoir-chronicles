@@ -122,6 +122,43 @@ void main() {
       expect(controller.canEndTurn, isFalse);
     });
 
+    test('Dice cannot be rolled twice in one turn', () async {
+      await controller.rollDice(gaugeValue: 0.5);
+
+      expect(controller.canRoll, isFalse);
+      expect(controller.isMoving, isFalse);
+
+      final secondAttempt = controller.rollDice(gaugeValue: 0.5);
+      expect(
+        controller.isMoving,
+        isFalse,
+        reason: 'Second roll must be rejected in the same turn',
+      );
+
+      await secondAttempt;
+      expect(controller.canRoll, isFalse);
+      expect(controller.canEndTurn, isTrue);
+    });
+
+    test('Action cannot be taken before movement ends', () async {
+      controller.currentPlayer.credits = 1000;
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+
+      final rollFuture = controller.rollDice(gaugeValue: 0.5);
+      expect(controller.isMoving, isTrue);
+
+      await controller.buyProperty(2);
+      expect(
+        controller.properties['node_2']?.ownerId,
+        isNull,
+        reason: 'Actions must be blocked while movement is resolving',
+      );
+
+      await rollFuture;
+      expect(controller.isMoving, isFalse);
+    });
+
     test('Action Limit: Only one property action per turn', () async {
       // Ensure we can act
       await controller.rollDice(gaugeValue: 0.5);
@@ -240,6 +277,94 @@ void main() {
 
       expect(controller.currentPlayer.position, 19);
       expect(controller.currentPlayer.nodeId, 'node_19');
+    });
+
+    test('Rent Scaling: Level multipliers apply correctly', () async {
+      final nodeId = 'node_2';
+      controller.currentPlayer.credits = 5000;
+
+      // Player 1 buys and upgrades property
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+      await controller.buyProperty(2);
+
+      final prop = controller.properties[nodeId]!;
+      final baseRent = prop.baseRent;
+
+      // Level 0: 1x rent
+      expect(prop.currentRent, baseRent * 1);
+
+      // Upgrade to Level 1
+      controller.forceNextTurn();
+      while (controller.currentPlayer.id != 'p1') {
+        controller.forceNextTurn();
+      }
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+      await controller.buyPropertyUpgrade(2);
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 2,
+        reason: 'Level 1 = 2x rent',
+      );
+    });
+
+    test('Takeover: Cannot takeover Landmark', () async {
+      final nodeId = 'node_2';
+
+      // Player 1 builds a Landmark
+      controller.currentPlayer.credits = 10000;
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+      await controller.buyProperty(2);
+
+      for (int i = 0; i < 4; i++) {
+        controller.forceNextTurn();
+        while (controller.currentPlayer.id != 'p1') {
+          controller.forceNextTurn();
+        }
+        controller.currentPlayer.nodeId = nodeId;
+        controller.currentPlayer.position = 2;
+        await controller.buyPropertyUpgrade(2);
+      }
+
+      expect(controller.properties[nodeId]!.hasLandmark, isTrue);
+
+      // Player 2 tries to takeover
+      controller.forceNextTurn();
+      expect(controller.currentPlayer.id, 'p2');
+      controller.currentPlayer.credits = 10000000;
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+
+      await controller.buyPropertyTakeover(2);
+
+      // Takeover should have been blocked
+      expect(
+        controller.properties[nodeId]!.ownerId,
+        'p1',
+        reason: 'Landmark cannot be taken over',
+      );
+    });
+
+    test('Mode Restriction: Manual save only in Practice', () async {
+      // Create a Ranked controller
+      final rankedController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        gameMode: GameMode.ranked,
+      );
+
+      // Attempt save
+      await rankedController.saveGame();
+      expect(
+        rankedController.lastEffectMessage,
+        contains('only allowed in Practice'),
+        reason: 'Ranked mode should block manual save',
+      );
     });
   });
 }
