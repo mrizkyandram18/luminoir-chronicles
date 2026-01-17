@@ -23,7 +23,7 @@ class EffectsManager {
                 fontSize: 24 + (8 * value),
                 fontWeight: FontWeight.bold,
                 shadows: [
-                  Shadow(color: color.withOpacity(0.8), blurRadius: 10),
+                  Shadow(color: color.withValues(alpha: 0.8), blurRadius: 10),
                 ],
               ),
             ),
@@ -42,7 +42,7 @@ class EffectsManager {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: propertyColor.withOpacity(0.6),
+            color: propertyColor.withValues(alpha: 0.6),
             blurRadius: 30,
             spreadRadius: 10,
           ),
@@ -94,7 +94,7 @@ class EffectsManager {
                 border: Border.all(color: Colors.cyanAccent, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.cyanAccent.withOpacity(0.5),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -136,7 +136,7 @@ class EffectsManager {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: glowColor.withOpacity(0.6 * intensity),
+            color: glowColor.withValues(alpha: 0.6 * intensity),
             blurRadius: 20 * intensity,
             spreadRadius: 10 * intensity,
           ),

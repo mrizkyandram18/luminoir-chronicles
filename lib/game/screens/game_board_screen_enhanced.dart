@@ -95,7 +95,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             Colors.black,
-            controller.currentPlayer.color.withOpacity(0.2),
+            controller.currentPlayer.color.withValues(alpha: 0.2),
             Colors.black,
           ],
         ),
@@ -137,7 +137,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: controller.currentPlayer.color.withOpacity(0.3),
+                color: controller.currentPlayer.color.withValues(alpha: 0.3),
                 blurRadius: 30,
                 spreadRadius: 5,
               ),
@@ -192,7 +192,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         tileColor = Colors.amberAccent;
         break;
       default:
-        tileColor = Colors.cyanAccent.withOpacity(0.3);
+        tileColor = Colors.cyanAccent.withValues(alpha: 0.3);
     }
 
     // Determine Owner Border
@@ -202,7 +202,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         orElse: () => controller.players[0],
       );
       borderColor = owner.color;
-      tileColor = owner.color.withOpacity(0.2);
+      tileColor = owner.color.withValues(alpha: 0.2);
     }
 
     return Align(
@@ -211,7 +211,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         width: 60,
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.8),
+          color: Colors.black.withValues(alpha: 0.8),
           border: Border.all(
             color: tile.ownerId != null ? borderColor : tileColor,
             width: tile.ownerId != null ? 3.0 : 1.5,
@@ -220,7 +220,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: (tile.ownerId != null ? borderColor : tileColor)
-                  .withOpacity(0.3),
+                  .withValues(alpha: 0.3),
               blurRadius: 8,
               spreadRadius: 1,
             ),
@@ -283,7 +283,7 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         border: isActive ? Border.all(color: Colors.white, width: 3) : null,
         boxShadow: [
           BoxShadow(
-            color: player.color.withOpacity(isActive ? 0.8 : 0.5),
+            color: player.color.withValues(alpha: isActive ? 0.8 : 0.5),
             blurRadius: isActive ? 20 : 10,
             spreadRadius: isActive ? 3 : 1,
           ),

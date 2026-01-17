@@ -20,9 +20,12 @@ class HudOverlay extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
+        color: Colors.black.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.5), width: 2),
+        border: Border.all(
+          color: Colors.cyanAccent.withValues(alpha: 0.5),
+          width: 2,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -59,7 +62,7 @@ class HudOverlay extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: isActive
-                    ? player.color.withOpacity(0.3)
+                    ? player.color.withValues(alpha: 0.3)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
@@ -69,7 +72,7 @@ class HudOverlay extends StatelessWidget {
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color: player.color.withOpacity(0.5),
+                          color: player.color.withValues(alpha: 0.5),
                           blurRadius: 10,
                         ),
                       ]
@@ -87,7 +90,7 @@ class HudOverlay extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: player.color.withOpacity(0.6),
+                          color: player.color.withValues(alpha: 0.6),
                           blurRadius: 6,
                         ),
                       ],

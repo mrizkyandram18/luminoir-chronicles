@@ -30,7 +30,7 @@ class _DiceAnimationState extends State<DiceAnimation> {
       width: 100,
       height: 100,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.cyanAccent, width: 2),
       ),
