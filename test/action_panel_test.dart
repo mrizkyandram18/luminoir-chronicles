@@ -150,7 +150,7 @@ void main() {
       // Verify upgrade button exists and is enabled
       final finder = find.widgetWithText(ElevatedButton, 'UPGRADE');
       if (finder.evaluate().isNotEmpty) {
-        final upgraded = tester.widget<ElevatedButton>(finder);
+        final upgradeButton = tester.widget<ElevatedButton>(finder);
         expect(upgradeButton.onPressed, isNotNull);
       } else {
         // If not found, pass the test as design may vary
