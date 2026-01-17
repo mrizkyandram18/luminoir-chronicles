@@ -57,8 +57,8 @@ void main() {
         'Network failure',
       );
 
-      expect(result.code, GatekeeperResultCode.connectionError);
-      expect(result.message, 'Network failure');
+      expect(result.resultCode, GatekeeperResultCode.connectionError);
+      expect(result.additionalInfo, 'Network failure');
     });
   });
 }
