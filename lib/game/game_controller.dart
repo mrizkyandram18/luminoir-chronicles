@@ -501,7 +501,7 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    _handleTileLanding();
+    await _handleTileLanding();
 
     // After resolution, check if player went bankrupt during landing (e.g. paid rent)
     await _checkGameOverCondition();
@@ -594,7 +594,7 @@ class GameController extends ChangeNotifier {
   @visibleForTesting
   Future<void> testMovePlayer(int steps, {bool backward = false}) async {
     await _moveCurrentPlayer(steps, backward: backward);
-    _handleTileLanding();
+    await _handleTileLanding();
   }
 
   void _nextTurn() {
@@ -813,7 +813,9 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  void _handleTileLanding() {
+  bool _isResolvingEvent = false;
+
+  Future<void> _handleTileLanding() async {
     String currentId = currentPlayer.nodeId;
     BoardNode? node = _boardGraph.getNode(currentId);
     if (node == null) return;
@@ -843,25 +845,33 @@ class GameController extends ChangeNotifier {
         _lastEffectMessage = "System Error! -$penalty Credits";
         break;
       case NodeType.event:
-        _handleEventCardLanding();
+        await _handleEventCardLanding();
         break;
       case NodeType.property:
         PropertyDetails? prop = _properties[currentId];
         if (prop != null) {
           if (prop.ownerId == null) {
-            _lastEffectMessage = "Node For Sale: ${prop.baseValue} Credits";
+            _lastEffectMessage =
+                "AVAILABLE: ${node.label} (${prop.baseValue} CR)";
           } else if (prop.ownerId != currentPlayer.id) {
-            final rent = prop.currentRent * multiplier;
-            // Immediate Payment Rule
-            currentPlayer.credits = max(0, currentPlayer.credits - rent);
-
-            // Give credits to owner
+            // RULE: Rent is multiplied by the OWNER's stats
             final owner = _players.firstWhere((p) => p.id == prop.ownerId);
-            owner.credits += rent;
+            final rent = prop.currentRent * owner.scoreMultiplier;
 
-            _lastEffectMessage = "Paid Toll: $rent Credits";
+            // Immediate Payment Rule with Bankruptcy check
+            final actualPayment = min(currentPlayer.credits, rent);
+            currentPlayer.credits -= actualPayment;
+            owner.credits += actualPayment;
+
+            if (currentPlayer.credits <= 0 && rent > actualPayment) {
+              _lastEffectMessage =
+                  "BANKRUPT! Paid $actualPayment CR to ${owner.name}";
+            } else {
+              _lastEffectMessage =
+                  "Paid Toll: $actualPayment CR to ${owner.name}";
+            }
           } else {
-            _lastEffectMessage = "Welcome back to your Node.";
+            _lastEffectMessage = "Secured Node: ${prop.levelName}";
           }
         }
         break;
@@ -871,7 +881,7 @@ class GameController extends ChangeNotifier {
     _safeNotifyListeners();
   }
 
-  void _handleEventCardLanding() {
+  Future<void> _handleEventCardLanding() async {
     if (_eventDeck.isEmpty) {
       _generateEventDeck();
     }
@@ -890,10 +900,20 @@ class GameController extends ChangeNotifier {
         currentPlayer.credits = max(0, currentPlayer.credits - card.value);
         break;
       case EventCardType.moveForward:
-        _moveCurrentPlayer(card.value);
+        await _moveCurrentPlayer(card.value);
+        if (!_isResolvingEvent) {
+          _isResolvingEvent = true;
+          await _handleTileLanding();
+          _isResolvingEvent = false;
+        }
         break;
       case EventCardType.moveBackward:
-        _moveCurrentPlayer(card.value, backward: true);
+        await _moveCurrentPlayer(card.value, backward: true);
+        if (!_isResolvingEvent) {
+          _isResolvingEvent = true;
+          await _handleTileLanding();
+          _isResolvingEvent = false;
+        }
         break;
     }
 

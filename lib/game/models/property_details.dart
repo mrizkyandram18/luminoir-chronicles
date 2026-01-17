@@ -17,6 +17,21 @@ class PropertyDetails {
     this.colorGroupId = 0,
   });
 
+  /// Human-readable label for the current level
+  String get levelName {
+    if (hasLandmark || buildingLevel >= 4) return 'Landmark';
+    switch (buildingLevel) {
+      case 1:
+        return 'Building α';
+      case 2:
+        return 'Building β';
+      case 3:
+        return 'Building γ';
+      default:
+        return 'Empty Lot';
+    }
+  }
+
   /// Create a copy with modified fields
   PropertyDetails copyWith({
     String? ownerId,

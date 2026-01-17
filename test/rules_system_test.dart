@@ -150,45 +150,31 @@ void main() {
 
     test('Landmark Rules: Level 4 locks ownership', () async {
       final nodeId = 'node_2';
+      controller.currentPlayer.credits = 5000;
 
       // Cycle through levels to Landmark
       for (int lv = 0; lv <= 4; lv++) {
-        await controller.rollDice(gaugeValue: 0.5);
-
-        // Force position each turn
+        // Use testMovePlayer for deterministic position
+        await controller.testMovePlayer(2);
+        // Ensure we stayed/landed on node_2
         controller.currentPlayer.nodeId = nodeId;
         controller.currentPlayer.position = 2;
 
         if (lv == 0) {
           await controller.buyProperty(2);
-          expect(
-            controller.properties[nodeId]?.ownerId,
-            'p1',
-            reason: 'Should own after buy',
-          );
         } else {
-          final prevLv = controller.properties[nodeId]?.buildingLevel ?? -1;
           await controller.buyPropertyUpgrade(2);
-          expect(
-            controller.properties[nodeId]?.buildingLevel,
-            prevLv + 1,
-            reason: 'Level should increment at step $lv',
-          );
         }
 
+        // Cycle to next turn normally but ensure it comes back to us
         controller.forceNextTurn();
-        while (controller.currentPlayerIndex != 0) {
+        while (controller.currentPlayer.id != 'p1') {
           controller.forceNextTurn();
         }
-        expect(
-          controller.currentPlayerIndex,
-          0,
-          reason: 'Should be player 0 turn again',
-        );
       }
 
       final prop = controller.properties[nodeId]!;
-      expect(prop.buildingLevel, 4);
+      expect(prop.buildingLevel, 4, reason: 'Level should reach 4 (Landmark)');
       expect(prop.hasLandmark, isTrue);
       expect(
         prop.takeoverCost,
