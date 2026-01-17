@@ -140,6 +140,29 @@ void main() {
       expect(controller.canEndTurn, isTrue);
     });
 
+    test('Property action is rejected before first roll', () async {
+      controller.currentPlayer.credits = 5000;
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+
+      await controller.buyProperty(2);
+
+      expect(controller.properties['node_2']?.ownerId, isNull);
+      expect(controller.actionTakenThisTurn, isFalse);
+      expect(controller.canRoll, isTrue);
+      expect(controller.canEndTurn, isFalse);
+    });
+
+    test('End turn is rejected before dice roll', () async {
+      final firstPlayerId = controller.currentPlayer.id;
+
+      controller.endTurn();
+
+      expect(controller.currentPlayer.id, firstPlayerId);
+      expect(controller.canRoll, isTrue);
+      expect(controller.canEndTurn, isFalse);
+    });
+
     test('Action cannot be taken before movement ends', () async {
       controller.currentPlayer.credits = 1000;
       controller.currentPlayer.nodeId = 'node_2';
@@ -220,7 +243,6 @@ void main() {
 
       // Cycle through levels to Landmark
       for (int lv = 0; lv <= 4; lv++) {
-        // Use testMovePlayer for deterministic position
         await controller.testMovePlayer(2);
         // Ensure we stayed/landed on node_2
         controller.currentPlayer.nodeId = nodeId;
@@ -372,7 +394,8 @@ void main() {
       // Price = 100 + (2*10) = 120
       // Rent = 20 + (2*2) = 24
 
-      // 0. Buy (Level 0)
+      // 0. Buy (Level 0) after completing roll/move
+      await controller.rollDice(gaugeValue: 0.5);
       controller.currentPlayer.nodeId = nodeId;
       controller.currentPlayer.position = 2;
       await controller.buyProperty(2);
@@ -421,7 +444,8 @@ void main() {
       final nodeId = 'node_2'; // Base Value: 120
       controller.currentPlayer.credits = 10000;
 
-      // 0. Buy (Level 0)
+      // 0. Buy (Level 0) after completing roll/move
+      await controller.rollDice(gaugeValue: 0.5);
       controller.currentPlayer.nodeId = nodeId;
       controller.currentPlayer.position = 2;
       await controller.buyProperty(2);
@@ -467,18 +491,13 @@ void main() {
 
       // Player 1 builds a Landmark
       controller.currentPlayer.credits = 10000;
+      await controller.rollDice(gaugeValue: 0.5);
       controller.currentPlayer.nodeId = nodeId;
       controller.currentPlayer.position = 2;
       await controller.buyProperty(2);
 
       for (int i = 0; i < 4; i++) {
-        controller.forceNextTurn();
-        while (controller.currentPlayer.id != 'p1') {
-          controller.forceNextTurn();
-        }
-        controller.currentPlayer.nodeId = nodeId;
-        controller.currentPlayer.position = 2;
-        await controller.buyPropertyUpgrade(2);
+        await _upgradeProperty(controller, nodeId, 2, 'p1');
       }
 
       expect(controller.properties[nodeId]!.hasLandmark, isTrue);
@@ -778,16 +797,14 @@ Future<void> _upgradeProperty(
   int position,
   String playerId,
 ) async {
-  // Force turn until it is our turn
   controller.forceNextTurn();
   while (controller.currentPlayer.id != playerId) {
     controller.forceNextTurn();
   }
 
-  // Set position
+  await controller.rollDice(gaugeValue: 0.5);
   controller.currentPlayer.nodeId = nodeId;
   controller.currentPlayer.position = position;
 
-  // Perform upgrade
   await controller.buyPropertyUpgrade(position);
 }

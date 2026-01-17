@@ -328,9 +328,28 @@ void main() {
     );
 
     test(
-      'GameController should block action when not my turn in multiplayer',
+      'GameController blocks actions when not my turn in multiplayer',
       () async {
-        // ARRANGE
+        final room = GameRoom(
+          id: 'room-123',
+          roomCode: 'ABC123',
+          hostChildId: 'host-child',
+          status: 'playing',
+          maxPlayers: 4,
+          currentTurnChildId: 'other-child',
+          boardState: const {},
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          winnerChildId: null,
+        );
+
+        when(mockMultiplayer.getRoomStream('room-123')).thenAnswer(
+          (_) => Stream<GameRoom>.value(room),
+        );
+        when(mockMultiplayer.getPlayersStream('room-123')).thenAnswer(
+          (_) => const Stream<List<RoomPlayer>>.empty(),
+        );
+
         final controller = GameController(
           mockGatekeeper,
           supabaseService: mockSupabase,
@@ -342,17 +361,21 @@ void main() {
           myChildId: 'child1',
         );
 
-        // Simulate NOT my turn by checking controller state
-        // Note: _isMyTurn is private, so we test via observed behavior
-        // In real scenario, this would be set via stream subscription
+        await Future.delayed(const Duration(milliseconds: 10));
 
-        // Wait for initialization
-        await Future.delayed(const Duration(milliseconds: 50));
+        expect(controller.isMyTurn, isFalse);
 
-        // ACT & ASSERT
-        // The controller defaults isMyTurn to true, so in this test
-        // it should allow the action (we're testing the path exists)
-        expect(controller.isMyTurn, isTrue);
+        final initialRoll = controller.diceRoll;
+        await controller.rollDice();
+        expect(controller.diceRoll, initialRoll);
+        expect(controller.lastEffectMessage, contains('Wait for your turn!'));
+
+        controller.currentPlayer.nodeId = 'node_2';
+        controller.currentPlayer.position = 2;
+        controller.currentPlayer.credits = 5000;
+
+        await controller.buyProperty(2);
+        expect(controller.properties['node_2']?.ownerId, isNull);
       },
     );
 

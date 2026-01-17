@@ -428,14 +428,23 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  bool _isActionBlockedForTurnOwner() {
+    if (!isMultiplayer) return false;
+    if (_isMyTurn) return false;
+    _lastEffectMessage = "Wait for your turn!";
+    _safeNotifyListeners();
+    return true;
+  }
+
   // Phase 17: Interactive Dice Charge
   void startDiceCharge() {
-    if (isMultiplayer && !_isMyTurn) return;
+    if (_isActionBlockedForTurnOwner()) return;
     if (!canRoll) return; // Use the new getter
     _dicePressStart = DateTime.now();
   }
 
   Future<void> releaseDiceCharge() async {
+    if (_isActionBlockedForTurnOwner()) return;
     if (_dicePressStart == null) {
       await rollDice();
       return;
@@ -455,15 +464,9 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> rollDice({double gaugeValue = 0.5}) async {
+    if (_isActionBlockedForTurnOwner()) return;
     if (!_canRoll) return;
     if (_isDisposed || _matchEnded || _isMoving) return;
-
-    // Phase 16: Check if it's my turn in multiplayer mode
-    if (isMultiplayer && !_isMyTurn) {
-      _lastEffectMessage = "Wait for your turn!";
-      _safeNotifyListeners();
-      return;
-    }
 
     _canRoll = false; // Lock rolling
     _isMoving = true;
@@ -611,6 +614,7 @@ class GameController extends ChangeNotifier {
 
   /// Transition to the next turn (Requires roll completion)
   void endTurn() {
+    if (_isActionBlockedForTurnOwner()) return;
     if (_isMoving) return;
     if (!canEndTurn) return;
     if (!_matchEnded && gameMode != GameMode.practice) {
@@ -626,9 +630,16 @@ class GameController extends ChangeNotifier {
 
   @visibleForTesting
   Future<void> testMovePlayer(int steps, {bool backward = false}) async {
+    _canRoll = false;
+    _isMoving = true;
+    _actionTakenThisTurn = false;
     await _moveCurrentPlayer(steps, backward: backward);
     await _handleTileLanding();
     await _checkGameOverCondition();
+    _isMoving = false;
+    if (!_matchEnded) {
+      _canEndTurn = true;
+    }
   }
 
   int _transferCredits({
@@ -734,6 +745,8 @@ class GameController extends ChangeNotifier {
 
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
+    if (_isActionBlockedForTurnOwner()) return;
+    if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
 
     // Convert tileId to nodeId
@@ -785,6 +798,8 @@ class GameController extends ChangeNotifier {
 
   /// Upgrade a property (Tycoon Mechanic)
   Future<void> buyPropertyUpgrade(int tileId) async {
+    if (_isActionBlockedForTurnOwner()) return;
+    if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
 
@@ -853,6 +868,8 @@ class GameController extends ChangeNotifier {
 
   /// Takeover a property from another player (Hostile Takeover)
   Future<void> buyPropertyTakeover(int tileId) async {
+    if (_isActionBlockedForTurnOwner()) return;
+    if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
 
