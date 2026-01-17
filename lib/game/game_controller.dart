@@ -41,6 +41,13 @@ class GameController extends ChangeNotifier {
   final int totalTiles = 20;
 
   // Phase 7: Events & Properties
+  static const int kSalary = 200;
+  static const int kStartBonus = 100;
+  static const int kMinigameReward = 200;
+  static const int kMinigameScore = 100;
+  static const int kPrisonPenalty = 150;
+  static const int kPrisonScorePenalty = 50;
+
   final List<EventCard> _eventDeck = [];
   EventCard? _currentEventCard;
 
@@ -575,11 +582,13 @@ class GameController extends ChangeNotifier {
 
         // Check for Passing Start (Salary) - only once per move
         // Detect crossing from position 19 to position 0 (wrapping around)
-        if (!_passedStartThisMove && previousPosition == 19 && newPosition == 0) {
+        if (!_passedStartThisMove &&
+            previousPosition == 19 &&
+            newPosition == 0) {
           // RULE: Passing START grants basic Salary
           // Total if landing exactly: Salary (200) + Bonus (100) = 300
-          currentPlayer.credits += 200;
-          _lastEffectMessage = "Passed Start! +200 Credits";
+          currentPlayer.credits += kSalary;
+          _lastEffectMessage = "Passed Start! +$kSalary Credits";
           _passedStartThisMove = true; // Prevent duplicate grants
         }
 
@@ -610,6 +619,7 @@ class GameController extends ChangeNotifier {
   Future<void> testMovePlayer(int steps, {bool backward = false}) async {
     await _moveCurrentPlayer(steps, backward: backward);
     await _handleTileLanding();
+    await _checkGameOverCondition();
   }
 
   int _transferCredits({
@@ -638,18 +648,12 @@ class GameController extends ChangeNotifier {
     final bool unableToPay = actualPaid < requiredAmount;
     if (player.credits == 0 && unableToPay) {
       if (gameMode == GameMode.practice) {
+        // Practice: No bankruptcy, just 0 credits
         return;
       }
 
       _lastEffectMessage = "BANKRUPT! ${player.name} has lost.";
-      final remainingPlayers = _players.where((p) => p.id != player.id).toList();
-      String? winnerId;
-      if (remainingPlayers.isNotEmpty) {
-        remainingPlayers.sort((a, b) => b.credits.compareTo(a.credits));
-        winnerId = remainingPlayers.first.id;
-      }
-
-      await endGame(winnerId: winnerId);
+      // NOTE: Actual game end is now handled in _checkGameOverCondition
     }
   }
 
@@ -779,10 +783,7 @@ class GameController extends ChangeNotifier {
     int cost = prop.upgradeCost;
 
     if (currentPlayer.credits >= cost) {
-      final paid = _transferCredits(
-        from: currentPlayer,
-        amount: cost,
-      );
+      final paid = _transferCredits(from: currentPlayer, amount: cost);
       await _checkBankruptcy(
         player: currentPlayer,
         requiredAmount: cost,
@@ -907,23 +908,20 @@ class GameController extends ChangeNotifier {
         // RULE: Landing bonus is separate from Passing Salary
         // Passing (200) + Landing (100) = 300 Total
         currentPlayer.score += (200 * multiplier);
-        currentPlayer.credits += 100;
+        currentPlayer.credits += kStartBonus;
         _lastEffectMessage =
-            "Exact Landing Bonus! +${200 * multiplier} Score, +100 Credits";
+            "Exact Landing Bonus! +${200 * multiplier} Score, +$kStartBonus Credits";
         break;
       case NodeType.minigame:
-        int reward = 200 * multiplier;
+        int reward = kMinigameReward * multiplier;
         currentPlayer.credits += reward;
-        currentPlayer.score += 100 * multiplier;
+        currentPlayer.score += kMinigameScore * multiplier;
         _lastEffectMessage = "Dark Web Loot! +$reward Credits";
         break;
       case NodeType.prison:
-        int penalty = 150 * multiplier;
-        final paid = _transferCredits(
-          from: currentPlayer,
-          amount: penalty,
-        );
-        currentPlayer.score = max(0, currentPlayer.score - 50);
+        int penalty = kPrisonPenalty * multiplier;
+        final paid = _transferCredits(from: currentPlayer, amount: penalty);
+        currentPlayer.score = max(0, currentPlayer.score - kPrisonScorePenalty);
         await _checkBankruptcy(
           player: currentPlayer,
           requiredAmount: penalty,
@@ -993,10 +991,7 @@ class GameController extends ChangeNotifier {
         currentPlayer.credits += card.value;
         break;
       case EventCardType.loseCredits:
-        final paid = _transferCredits(
-          from: currentPlayer,
-          amount: card.value,
-        );
+        final paid = _transferCredits(from: currentPlayer, amount: card.value);
         await _checkBankruptcy(
           player: currentPlayer,
           requiredAmount: card.value,
@@ -1188,23 +1183,33 @@ class GameController extends ChangeNotifier {
     bool gameOver = false;
     String? winnerId;
 
-    // Condition 1: Bankruptcy (Credit <= 0)
+    // 1. PRACTICE MODE: Score Threshold Only
     if (gameMode == GameMode.practice) {
-      // Practice: Continue or End on target score
+      // Continue until someone hits 5000 score
+      // Bankruptcy does NOT end the game in Practice (they can recover via salary)
       if (_players.any((p) => p.score >= 5000)) {
         gameOver = true;
         winnerId = _players.reduce((a, b) => a.score > b.score ? a : b).id;
       }
-    } else {
-      // Ranked/Online: End if only one player with credits remains
+    }
+    // 2. RANKED / ONLINE: Bankruptcy OR Score Threshold
+    else {
+      // A) Last Standing Rule (Bankruptcy)
+      // Count active players (credits > 0 OR owns properties)
+      // Simpler rule: Players with 0 credits who couldn't pay are "out" logic-wise,
+      // but for simplicity, we check if they are "Bankrupt" (0 credits + invalid state).
+      // Here we assume if you have > 0 credits you are alive.
+
       final activePlayers = _players.where((p) => p.credits > 0).toList();
+
+      // If 1 or 0 remain, game over
       if (activePlayers.length <= 1) {
         gameOver = true;
         winnerId = activePlayers.isNotEmpty ? activePlayers.first.id : null;
       }
 
-      // OR reach max score
-      if (_players.any((p) => p.score >= 10000)) {
+      // B) Score Threshold (10,000)
+      if (!gameOver && _players.any((p) => p.score >= 10000)) {
         gameOver = true;
         winnerId = _players.reduce((a, b) => a.score > b.score ? a : b).id;
       }

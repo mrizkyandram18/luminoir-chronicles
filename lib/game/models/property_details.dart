@@ -51,38 +51,66 @@ class PropertyDetails {
 
   // --- Game Logic ---
 
+  static const double kUpgradeCostMultiplier = 0.5;
+
   /// Dynamic Rent Calculation
   int get currentRent {
     if (ownerId == null) return 0;
 
-    // Rent Formula: Base + (Base * BuildingMultiplier * Level)
-    double multiplier = 1.0;
+    // Rent Formula: Base * Multiplier
+    int multiplier;
 
-    if (hasLandmark || buildingLevel >= 4) {
-      multiplier = 8.0; // Massive rent for Landmarks
+    if (hasLandmark) {
+      multiplier = 8; // Level 4 (Landmark) -> 8x
     } else {
-      // Land(0): 1x, B1(1): 2x, B2(2): 3x, B3(3): 4x
-      multiplier = 1.0 + buildingLevel;
+      switch (buildingLevel) {
+        case 0:
+          multiplier = 1; // Level 0 -> 1x
+          break;
+        case 1:
+          multiplier = 2; // Level 1 -> 2x
+          break;
+        case 2:
+          multiplier = 3; // Level 2 -> 3x
+          break;
+        case 3:
+          multiplier = 4; // Level 3 -> 4x
+          break;
+        default:
+          multiplier = 8; // Should correspond to Landmark/Max
+      }
     }
 
-    return (baseRent * multiplier).round();
+    return baseRent * multiplier;
   }
 
   /// Cost to construct the next upgrade
   int get upgradeCost {
     // Simplified: Upgrade cost is 50% of base land value
     // Landmark (Level 4) might be more expensive
-    if (buildingLevel >= 3) return baseValue;
-    return (baseValue * 0.5).round();
+    if (buildingLevel >= 3) {
+      return baseValue; // Level 3 -> 4 cost is full base value
+    }
+    return (baseValue * kUpgradeCostMultiplier).round();
   }
 
   /// Cost to takeover this property from an opponent
-  /// Usually 2x the total current value
+  /// Formula: (baseValue + upgradeCost * currentLevel) * 2
   int get takeoverCost {
     if (hasLandmark || buildingLevel >= 4) {
       return 9999999; // Effectively unstealable
     }
-    int totalValue = baseValue + (upgradeCost * buildingLevel);
+
+    // Note: This assumes 'upgradeCost' is constant for calculation simplicity
+    // or refers to the *current* upgrade cost.
+    // Based on requirement: "(baseValue + upgradeCost * currentLevel) * 2"
+    // We'll use the current level's upgrade cost logic for consistency,
+    // or better, a fixed base upgrade cost to avoid fluctuation if upgradeCost changes per level.
+    // For now, using the standard upgrade cost derivative:
+
+    int standardUpgradeCost = (baseValue * kUpgradeCostMultiplier).round();
+
+    int totalValue = baseValue + (standardUpgradeCost * buildingLevel);
     return totalValue * 2;
   }
 }

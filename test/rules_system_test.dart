@@ -205,7 +205,7 @@ void main() {
       // Now try to buy another property (node_4) - should be blocked
       controller.currentPlayer.nodeId = 'node_4';
       controller.currentPlayer.position = 4;
-      
+
       await controller.buyProperty(4);
       expect(
         controller.properties['node_4']?.ownerId,
@@ -362,33 +362,103 @@ void main() {
       expect(controller.currentPlayer.nodeId, 'node_19');
     });
 
-    test('Rent Scaling: Level multipliers apply correctly', () async {
+    test('Rent Scaling: Strict Multipliers (1x, 2x, 3x, 4x, 8x)', () async {
       final nodeId = 'node_2';
-      controller.currentPlayer.credits = 5000;
+      controller.currentPlayer.credits = 10000;
 
-      // Player 1 buys and upgrades property
+      // Ensure specific base values
+      // node_2: Base Value 120, Base Rent 24
+      // See GameController._initializeProperties:
+      // Price = 100 + (2*10) = 120
+      // Rent = 20 + (2*2) = 24
+
+      // 0. Buy (Level 0)
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+      await controller.buyProperty(2);
+
+      final baseRent = controller.properties[nodeId]!.baseRent; // 24
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 1,
+        reason: "Lv0 -> 1x",
+      );
+
+      // 1. Upgrade to Level 1
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 2,
+        reason: "Lv1 -> 2x",
+      );
+
+      // 2. Upgrade to Level 2
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 3,
+        reason: "Lv2 -> 3x",
+      );
+
+      // 3. Upgrade to Level 3
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 4,
+        reason: "Lv3 -> 4x",
+      );
+
+      // 4. Upgrade to Level 4 (Landmark)
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      expect(
+        controller.properties[nodeId]!.currentRent,
+        baseRent * 8,
+        reason: "Lv4 -> 8x",
+      );
+    });
+
+    test('Takeover Cost: Exact Formula Matches', () async {
+      final nodeId = 'node_2'; // Base Value: 120
+      controller.currentPlayer.credits = 10000;
+
+      // 0. Buy (Level 0)
       controller.currentPlayer.nodeId = nodeId;
       controller.currentPlayer.position = 2;
       await controller.buyProperty(2);
 
       final prop = controller.properties[nodeId]!;
-      final baseRent = prop.baseRent;
+      // Formula: (Base + (UpgradeCost * Level)) * 2
+      // Base = 120
+      // Upgrade = 120 * 0.5 = 60
 
-      // Level 0: 1x rent
-      expect(prop.currentRent, baseRent * 1);
+      // Lv 0: (120 + 60*0) * 2 = 240
+      expect(prop.takeoverCost, 240, reason: "Lv0 Takeover Cost");
 
-      // Upgrade to Level 1
-      controller.forceNextTurn();
-      while (controller.currentPlayer.id != 'p1') {
-        controller.forceNextTurn();
-      }
-      controller.currentPlayer.nodeId = nodeId;
-      controller.currentPlayer.position = 2;
-      await controller.buyPropertyUpgrade(2);
+      // 1. Upgrade to Level 1
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      // Lv 1: (120 + 60*1) * 2 = 360
       expect(
-        controller.properties[nodeId]!.currentRent,
-        baseRent * 2,
-        reason: 'Level 1 = 2x rent',
+        controller.properties[nodeId]!.takeoverCost,
+        360,
+        reason: "Lv1 Takeover Cost",
+      );
+
+      // 2. Upgrade to Level 2
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      // Lv 2: (120 + 60*2) * 2 = 480
+      expect(
+        controller.properties[nodeId]!.takeoverCost,
+        480,
+        reason: "Lv2 Takeover Cost",
+      );
+
+      // 3. Upgrade to Level 3
+      await _upgradeProperty(controller, nodeId, 2, 'p1');
+      // Lv 3: (120 + 60*3) * 2 = 600
+      expect(
+        controller.properties[nodeId]!.takeoverCost,
+        600,
+        reason: "Lv3 Takeover Cost",
       );
     });
 
@@ -539,5 +609,78 @@ void main() {
         reason: 'Ranked mode should block manual save',
       );
     });
+
+    test('Practice Mode: Score >= 5000 ends game', () async {
+      controller.currentPlayer.score = 5000;
+      // Trigger game over check via move
+      await controller.testMovePlayer(0);
+      expect(
+        controller.matchEnded,
+        isTrue,
+        reason: "Score 5000 in Practice should end game",
+      );
+    });
+
+    test('Ranked Mode: Score >= 10000 ends game', () async {
+      final rankedController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        gameMode: GameMode.ranked,
+      );
+
+      rankedController.currentPlayer.score = 10000;
+      // Trigger game over check via move
+      await rankedController.testMovePlayer(0);
+      expect(
+        rankedController.matchEnded,
+        isTrue,
+        reason: "Score 10000 in Ranked should end game",
+      );
+    });
+
+    test('Ranked Mode: Score < 10000 does not end game', () async {
+      final rankedController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        gameMode: GameMode.ranked,
+      );
+
+      rankedController.currentPlayer.score = 9000;
+
+      // Trigger game over check via move
+      await rankedController.testMovePlayer(0);
+      expect(
+        rankedController.matchEnded,
+        isFalse,
+        reason: "Score 9000 in Ranked should NOT end game",
+      );
+    });
   });
+}
+
+/// Helper to force-cycle turns and upgrade a property
+Future<void> _upgradeProperty(
+  GameController controller,
+  String nodeId,
+  int position,
+  String playerId,
+) async {
+  // Force turn until it is our turn
+  controller.forceNextTurn();
+  while (controller.currentPlayer.id != playerId) {
+    controller.forceNextTurn();
+  }
+
+  // Set position
+  controller.currentPlayer.nodeId = nodeId;
+  controller.currentPlayer.position = position;
+
+  // Perform upgrade
+  await controller.buyPropertyUpgrade(position);
 }
