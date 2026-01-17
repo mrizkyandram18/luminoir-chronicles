@@ -25,6 +25,7 @@ class BetterMockSupabase extends Fake implements SupabaseService {
   final _propStreamController =
       StreamController<List<Map<String, dynamic>>>.broadcast();
   int upsertPlayerCallCount = 0;
+  int recordMatchResultCallCount = 0;
 
   @override
   Stream<List<Player>> getPlayersStream() => _playerStreamController.stream;
@@ -45,7 +46,9 @@ class BetterMockSupabase extends Fake implements SupabaseService {
   }
 
   @override
-  Future<void> recordMatchResult(Map<String, dynamic> data) async {}
+  Future<void> recordMatchResult(Map<String, dynamic> data) async {
+    recordMatchResultCallCount++;
+  }
 
   @override
   Future<List<Map<String, dynamic>>> queryLeaderboard({
@@ -256,6 +259,41 @@ void main() {
 
     await controller.saveGame();
     expect(controller.lastEffectMessage, contains('Match already ended'));
+  });
+
+  test('Practice mode never persists to Supabase', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    await controller.rollDice(gaugeValue: 0.5);
+    await controller.saveGame();
+    await controller.endGame(winnerId: 'child');
+
+    expect(supabase.upsertPlayerCallCount, 0);
+    expect(supabase.recordMatchResultCallCount, 0);
+  });
+
+  test('Ranked mode persists match results to Supabase', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      gameMode: GameMode.ranked,
+    );
+
+    await controller.endGame(winnerId: 'child');
+
+    expect(supabase.recordMatchResultCallCount, 1);
   });
 
   test('Cannot load after match ended', () async {

@@ -16,6 +16,18 @@ import 'models/match_result.dart';
 
 enum GameMode { practice, ranked, online }
 
+extension GameModePersistenceX on GameMode {
+  bool get canPersist {
+    switch (this) {
+      case GameMode.practice:
+        return false;
+      case GameMode.ranked:
+      case GameMode.online:
+        return true;
+    }
+  }
+}
+
 class GameController extends ChangeNotifier {
   // Players (Synced from Stream)
   List<Player> _players = [];
@@ -120,11 +132,11 @@ class GameController extends ChangeNotifier {
 
     _generateEventDeck();
 
-    // Create default players in memory for initial setup if needed
     final defaultPlayers = _createDefaultPlayers();
 
-    // Initialize DB if empty
-    _supabase.initializeDefaultPlayersIfNeeded(defaultPlayers);
+    if (this.gameMode.canPersist) {
+      _supabase.initializeDefaultPlayersIfNeeded(defaultPlayers);
+    }
 
     // Subscribe to Players stream
     _supabase.getPlayersStream().listen((updatedPlayers) {
@@ -512,12 +524,10 @@ class GameController extends ChangeNotifier {
 
     await _handleTileLanding();
 
-    // After resolution, check if player went bankrupt during landing (e.g. paid rent)
     await _checkGameOverCondition();
     if (_matchEnded) return;
 
-    // SYNC TO SUPABASE (Only if not practice)
-    if (gameMode != GameMode.practice) {
+    if (gameMode.canPersist) {
       await _supabase.upsertPlayer(currentPlayer);
     }
 
@@ -759,13 +769,11 @@ class GameController extends ChangeNotifier {
       _actionTakenThisTurn = true;
       _lastEffectMessage = "Purchased ${prop.nodeId}!";
 
-      // Update local state
       _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
 
       _safeNotifyListeners();
 
-      // Sync Player (Credits) and Property (Owner)
-      if (gameMode != GameMode.practice) {
+      if (gameMode.canPersist) {
         await _supabase.upsertPlayer(currentPlayer);
         await _supabase.upsertProperty(tileId, currentPlayer.id, 0);
       }
@@ -823,7 +831,6 @@ class GameController extends ChangeNotifier {
       final newLevel = prop.buildingLevel + 1;
       final isLandmark = newLevel >= 4;
 
-      // Update local
       _properties[nodeId] = prop.copyWith(
         buildingLevel: newLevel,
         hasLandmark: isLandmark,
@@ -834,7 +841,7 @@ class GameController extends ChangeNotifier {
           : "Upgraded to Lv $newLevel!";
       _safeNotifyListeners();
 
-      if (gameMode != GameMode.practice) {
+      if (gameMode.canPersist) {
         await _supabase.upsertPlayer(currentPlayer);
         await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
       }
@@ -897,19 +904,17 @@ class GameController extends ChangeNotifier {
         actualPaid: paid,
       );
 
-      if (previousOwner != null && gameMode != GameMode.practice) {
+      if (previousOwner != null && gameMode.canPersist) {
         await _supabase.upsertPlayer(previousOwner);
       }
 
       _lastEffectMessage = "Takeover Successful!";
 
-      // 2. Transfer Ownership
       _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
 
       _safeNotifyListeners();
 
-      // 3. Sync
-      if (gameMode != GameMode.practice) {
+      if (gameMode.canPersist) {
         await _supabase.upsertPlayer(currentPlayer);
         await _supabase.upsertProperty(
           tileId,
@@ -1053,7 +1058,7 @@ class GameController extends ChangeNotifier {
   /// Autosave: Only saves non-match progress (rank, stats)
   /// Does NOT save match state to prevent save/load exploits
   Future<void> autosave() async {
-    if (_matchEnded || gameMode == GameMode.practice) return;
+    if (_matchEnded || !gameMode.canPersist) return;
 
     try {
       for (final p in _players) {
@@ -1094,22 +1099,24 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    for (final p in _players) {
-      await _supabase.upsertPlayer(p);
-    }
-
-    _properties.forEach((key, prop) async {
-      if (prop.ownerId != null) {
-        int tileId = int.parse(key.split('_').last);
-        await _supabase.upsertProperty(
-          tileId,
-          prop.ownerId!,
-          prop.buildingLevel,
-        );
+    if (gameMode.canPersist) {
+      for (final p in _players) {
+        await _supabase.upsertPlayer(p);
       }
-    });
 
-    await _supabase.saveGameState(_currentPlayerIndex);
+      _properties.forEach((key, prop) async {
+        if (prop.ownerId != null) {
+          int tileId = int.parse(key.split('_').last);
+          await _supabase.upsertProperty(
+            tileId,
+            prop.ownerId!,
+            prop.buildingLevel,
+          );
+        }
+      });
+
+      await _supabase.saveGameState(_currentPlayerIndex);
+    }
 
     _lastEffectMessage = "Game Saved Successfully!";
     notifyListeners();
@@ -1178,10 +1185,12 @@ class GameController extends ChangeNotifier {
       finalCredits: humanPlayer.credits,
     );
 
-    try {
-      await _supabase.recordMatchResult(matchResult.toMap());
-    } catch (e) {
-      debugPrint('Error saving match result: $e');
+    if (gameMode.canPersist) {
+      try {
+        await _supabase.recordMatchResult(matchResult.toMap());
+      } catch (e) {
+        debugPrint('Error saving match result: $e');
+      }
     }
 
     if (gameMode == GameMode.ranked && humanPlayer.isHuman) {
