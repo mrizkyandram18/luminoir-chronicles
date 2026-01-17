@@ -185,6 +185,35 @@ void main() {
       );
     });
 
+    test('Double buy in one turn is rejected', () async {
+      // Ensure we can act
+      await controller.rollDice(gaugeValue: 0.5);
+
+      // Force position to Node 2 (Property)
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+      controller.currentPlayer.credits = 5000;
+
+      // First buy succeeds
+      await controller.buyProperty(2);
+      expect(
+        controller.properties['node_2']?.ownerId,
+        controller.currentPlayer.id,
+      );
+      expect(controller.actionTakenThisTurn, isTrue);
+
+      // Now try to buy another property (node_4) - should be blocked
+      controller.currentPlayer.nodeId = 'node_4';
+      controller.currentPlayer.position = 4;
+      
+      await controller.buyProperty(4);
+      expect(
+        controller.properties['node_4']?.ownerId,
+        isNull,
+        reason: 'Double buy in one turn must be rejected',
+      );
+    });
+
     test('Landmark Rules: Level 4 locks ownership', () async {
       final nodeId = 'node_2';
       controller.currentPlayer.credits = 5000;
