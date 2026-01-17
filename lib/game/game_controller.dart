@@ -75,6 +75,7 @@ class GameController extends ChangeNotifier {
   bool _canEndTurn = false;
   bool _actionTakenThisTurn = false;
   bool _isMoving = false;
+  bool _passedStartThisMove = false; // Track START crossing per move
 
   // Getters for Rule Enforcement
   bool get canRoll => _canRoll && !matchEnded && !_isMoving;
@@ -528,6 +529,9 @@ class GameController extends ChangeNotifier {
     // Graph Traversal Logic
     String currentId = currentPlayer.nodeId;
 
+    // Reset START passing flag at the start of each move
+    _passedStartThisMove = false;
+
     if (backward) {
       // Phase 1: Simple teleport for backward movement
       // Calculate new index in the 20-node loop
@@ -549,6 +553,9 @@ class GameController extends ChangeNotifier {
       return;
     }
 
+    // Track previous position to detect START crossing
+    int previousPosition = currentPlayer.position;
+
     for (int i = 0; i < steps; i++) {
       BoardNode? node = _boardGraph.getNode(currentId);
       if (node != null && node.nextNodeIds.isNotEmpty) {
@@ -559,19 +566,25 @@ class GameController extends ChangeNotifier {
         currentPlayer.nodeId = currentId;
 
         // Sync legacy integer position for backward compatibility
+        int newPosition;
         try {
-          currentPlayer.position = int.parse(currentId.split('_').last);
+          newPosition = int.parse(currentId.split('_').last);
         } catch (e) {
-          currentPlayer.position = 0;
+          newPosition = 0;
         }
 
-        // Check for Passing Start (Salary)
-        if (currentPlayer.position == 0) {
+        // Check for Passing Start (Salary) - only once per move
+        // Detect crossing from position 19 to position 0 (wrapping around)
+        if (!_passedStartThisMove && previousPosition == 19 && newPosition == 0) {
           // RULE: Passing START grants basic Salary
           // Total if landing exactly: Salary (200) + Bonus (100) = 300
           currentPlayer.credits += 200;
           _lastEffectMessage = "Passed Start! +200 Credits";
+          _passedStartThisMove = true; // Prevent duplicate grants
         }
+
+        currentPlayer.position = newPosition;
+        previousPosition = newPosition;
 
         _safeNotifyListeners(); // Trigger UI Animation
         await Future.delayed(

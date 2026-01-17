@@ -266,6 +266,60 @@ void main() {
       expect(controller.currentPlayer.position, 0);
     });
 
+    test('START Bonus: Passing without landing', () async {
+      // Setup: 1 step behind START (node_19)
+      controller.currentPlayer.nodeId = 'node_19';
+      controller.currentPlayer.position = 19;
+      controller.currentPlayer.credits = 1000;
+
+      // Move 5 steps forward (passes START, lands on node_4)
+      await controller.testMovePlayer(5);
+
+      // Result: Only passing bonus (200), no landing bonus
+      expect(
+        controller.currentPlayer.credits,
+        1200,
+        reason: 'Should gain 200 for passing START, but not landing bonus',
+      );
+      expect(controller.currentPlayer.position, 4);
+    });
+
+    test('START Bonus: Landing exactly on START', () async {
+      // Setup: Already at START (node_0)
+      controller.currentPlayer.nodeId = 'node_0';
+      controller.currentPlayer.position = 0;
+      controller.currentPlayer.credits = 1000;
+
+      // Move 20 steps (full loop, lands back on START)
+      await controller.testMovePlayer(20);
+
+      // Result: Passing (200) + Landing (100) = 300
+      expect(
+        controller.currentPlayer.credits,
+        1300,
+        reason: 'Should gain 200 for passing + 100 for landing on START',
+      );
+      expect(controller.currentPlayer.position, 0);
+    });
+
+    test('START Bonus: Long move wrapping board (passes START once)', () async {
+      // Setup: At position 10
+      controller.currentPlayer.nodeId = 'node_10';
+      controller.currentPlayer.position = 10;
+      controller.currentPlayer.credits = 1000;
+
+      // Move 16 steps (wraps around, passes START once, lands on node_6 - property)
+      await controller.testMovePlayer(16);
+
+      // Result: Only one passing bonus (200), no landing bonus on property
+      expect(
+        controller.currentPlayer.credits,
+        1200,
+        reason: 'Should gain 200 for passing START once, even with long move',
+      );
+      expect(controller.currentPlayer.position, 6);
+    });
+
     test('Event: Move Backward (Teleport Phase 1)', () async {
       // Setup: at node_2
       controller.currentPlayer.nodeId = 'node_2';
