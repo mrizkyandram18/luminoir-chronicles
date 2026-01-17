@@ -522,13 +522,9 @@ class GameController extends ChangeNotifier {
     }
 
     _isMoving = false;
-    _canEndTurn = true; // Allow ending turn after landing
+    _canEndTurn = true;
     _safeNotifyListeners();
 
-    // Autosave (non-match progress only)
-    await autosave();
-
-    // Check game over
     await _checkGameOverCondition();
   }
 
@@ -607,6 +603,9 @@ class GameController extends ChangeNotifier {
   void endTurn() {
     if (_isMoving) return;
     if (!canEndTurn) return;
+    if (!_matchEnded && gameMode != GameMode.practice) {
+      autosave();
+    }
     _nextTurn();
   }
 
@@ -1096,11 +1095,7 @@ class GameController extends ChangeNotifier {
     }
 
     for (final p in _players) {
-      if (gameMode == GameMode.ranked && p.isHuman) {
-        await _leaderboardService.updatePlayerStats(p);
-      } else {
-        await _supabase.upsertPlayer(p);
-      }
+      await _supabase.upsertPlayer(p);
     }
 
     _properties.forEach((key, prop) async {

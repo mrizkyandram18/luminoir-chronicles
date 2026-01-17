@@ -158,6 +158,46 @@ void main() {
     expect(leaderboard.updateCallCount, greaterThan(0));
   });
 
+  test('Autosave does not sync stats in Practice mode on end turn', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    await controller.rollDice(gaugeValue: 0.5);
+    expect(controller.canEndTurn, isTrue);
+
+    controller.endTurn();
+
+    expect(leaderboard.updateCallCount, 0);
+  });
+
+  test('End turn autosaves only in Ranked mode', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      gameMode: GameMode.ranked,
+    );
+
+    await controller.rollDice(gaugeValue: 0.5);
+    expect(controller.canEndTurn, isTrue);
+
+    final initialCalls = leaderboard.updateCallCount;
+
+    controller.endTurn();
+
+    expect(leaderboard.updateCallCount, greaterThan(initialCalls));
+  });
+
   test('Practice mode does NOT update rank on game end', () async {
     controller = GameController(
       gatekeeper,

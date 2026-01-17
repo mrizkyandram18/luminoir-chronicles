@@ -610,6 +610,24 @@ void main() {
       );
     });
 
+    test('Mode Restriction: Manual load only in Practice', () async {
+      final rankedController = GameController(
+        MockGatekeeper(),
+        parentId: 'p',
+        childId: 'c',
+        supabaseService: MockSupabase(),
+        leaderboardService: MockLeaderboard(),
+        gameMode: GameMode.ranked,
+      );
+
+      await rankedController.loadGame();
+      expect(
+        rankedController.lastEffectMessage,
+        contains('only allowed in Practice'),
+        reason: 'Ranked mode should block manual load',
+      );
+    });
+
     test('Practice Mode: Score >= 5000 ends game', () async {
       controller.currentPlayer.score = 5000;
       // Trigger game over check via move
