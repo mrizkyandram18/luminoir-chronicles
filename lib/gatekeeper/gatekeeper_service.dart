@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'gatekeeper_result.dart';
 
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
-  final bool _isSystemOnline = true;
+  bool _isSystemOnline = true;
 
   // Realtime monitoring
   StreamSubscription<DocumentSnapshot>? _realtimeListener;
   bool _isRealtimeActive = true;
-  String? _displayName;
 
   bool get isSystemOnline => _isSystemOnline;
   bool get isRealtimeActive => _isRealtimeActive;
-  String? get displayName => _displayName;
+
+  bool get hasActiveAuthSession =>
+      FirebaseAuth.instance.currentUser != null;
 
   /// Checks if the Child Agent is active.
   /// Returns a GatekeeperResult with specific result code
@@ -63,22 +65,15 @@ class GatekeeperService extends ChangeNotifier {
       final lastSeenDate = lastSeen.toDate();
       final difference = DateTime.now().difference(lastSeenDate);
 
-      // Active if seen within last 5 MINUTES (as per requirements)
-      if (difference.inMinutes.abs() < 5) {
-        // Fetch display name if available
-        _displayName = data['name'] ?? data['displayName'] ?? childId;
-        notifyListeners();
-
-        // RC 00: Success
+      if (difference.inSeconds.abs() <= 60) {
         return const GatekeeperResult(GatekeeperResultCode.success);
       } else {
-        // RC 02: User Inactive
         debugPrint(
           "Gatekeeper [02]: Agent inactive. Last seen: $difference ago.",
         );
         return GatekeeperResult(
           GatekeeperResultCode.userInactive,
-          'Last seen: ${difference.inHours} hours ago',
+          'Last seen: ${difference.inSeconds} seconds ago',
         );
       }
     } catch (e) {
@@ -150,37 +145,14 @@ class GatekeeperService extends ChangeNotifier {
     _realtimeListener = null;
   }
 
-  // Legacy/Mock status (kept for compatibility with Splash Screen)
   Future<void> checkStatus() async {
-    // Avoid notifyListeners() here (causes "setState during build" error on startup)
-    // Just wait a tick to simulate async check
     await Future.delayed(Duration.zero);
+    _isSystemOnline = hasActiveAuthSession;
   }
 
   @override
   void dispose() {
     stopRealtimeMonitoring();
     super.dispose();
-  }
-
-  /// Update display name in Firestore
-  Future<void> updateDisplayName(
-    String parentId,
-    String childId,
-    String newName,
-  ) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(parentId)
-          .collection('children')
-          .doc(childId)
-          .update({'name': newName});
-
-      _displayName = newName;
-      notifyListeners();
-    } catch (e) {
-      debugPrint("Error updating display name: $e");
-    }
   }
 }

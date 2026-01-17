@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
+import '../../gatekeeper/screens/access_denied_screen.dart';
 import 'main_menu.dart';
 import 'package:provider/provider.dart';
 
@@ -37,13 +38,11 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (!result.isSuccess) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Access Denied [${result.resultCode.code}]\n"
-            "${result.displayMessage}",
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const AccessDeniedScreen(
+            reasonCode: 'OFFLINE',
           ),
-          backgroundColor: Colors.red,
         ),
       );
       return;

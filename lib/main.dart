@@ -13,6 +13,7 @@ import 'game/screens/main_menu.dart';
 // import 'game/game_controller.dart'; // No longer needed here
 // import 'game/screens/game_board_screen.dart'; // Managed by SetupScreen
 import 'game/screens/setup_screen.dart';
+import 'game_identity/game_identity_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +51,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => GatekeeperService()),
-        // GameController is now provided dynamically by SetupScreen
+        ChangeNotifierProvider(create: (_) => GameIdentityService()),
       ],
       child: const CyberTycoonApp(),
     ),
@@ -92,7 +93,10 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/access-denied',
-      builder: (context, state) => const AccessDeniedScreen(),
+      builder: (context, state) {
+        final reason = state.extra as String? ?? 'SERVICE_STOPPED';
+        return AccessDeniedScreen(reasonCode: reason);
+      },
     ),
     GoRoute(path: '/setup', builder: (context, state) => const SetupScreen()),
   ],

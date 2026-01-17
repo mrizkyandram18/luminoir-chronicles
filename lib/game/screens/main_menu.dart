@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
+import '../../game_identity/game_identity_service.dart';
 import 'lobby_screen.dart';
 import 'game_board_screen_enhanced.dart';
 import '../game_controller.dart';
@@ -28,8 +29,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   void initState() {
     super.initState();
-    final gatekeeper = context.read<GatekeeperService>();
-    _nameController.text = gatekeeper.displayName ?? widget.childId;
+    final identity = context.read<GameIdentityService>();
+    _nameController.text = identity.getName(widget.childId);
   }
 
   @override
@@ -42,9 +43,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     if (_nameController.text.trim().isEmpty) return;
 
     setState(() => _isLoading = true);
-    final gatekeeper = context.read<GatekeeperService>();
-    await gatekeeper.updateDisplayName(
-      widget.parentId,
+    final identity = context.read<GameIdentityService>();
+    await identity.rename(
       widget.childId,
       _nameController.text.trim(),
     );

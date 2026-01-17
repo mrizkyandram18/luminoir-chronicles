@@ -26,7 +26,10 @@ class _SplashScreenState extends State<SplashScreen> {
       if (gatekeeper.isSystemOnline) {
         context.go('/setup');
       } else {
-        context.go('/access-denied');
+        context.go(
+          '/access-denied',
+          extra: 'SERVICE_STOPPED',
+        );
       }
     }
   }

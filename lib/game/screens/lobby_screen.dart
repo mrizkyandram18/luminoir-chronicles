@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../gatekeeper/gatekeeper_service.dart';
+import '../../game_identity/game_identity_service.dart';
 import '../services/multiplayer_service.dart';
 import 'waiting_room_screen.dart';
 
@@ -43,8 +43,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final gatekeeper = context.read<GatekeeperService>();
-      final displayName = gatekeeper.displayName ?? 'Player 1';
+      final identity = context.read<GameIdentityService>();
+      final displayName = identity.getName(widget.childId);
 
       final roomCode = await _multiplayerService.createRoom(
         hostChildId: widget.childId,
@@ -101,8 +101,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final gatekeeper = context.read<GatekeeperService>();
-      final displayName = gatekeeper.displayName ?? 'Player';
+      final identity = context.read<GameIdentityService>();
+      final displayName = identity.getName(widget.childId);
 
       // Check if room exists
       final room = await _multiplayerService.getRoomByCode(code);

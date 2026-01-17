@@ -3,7 +3,12 @@ import 'package:gap/gap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AccessDeniedScreen extends StatelessWidget {
-  const AccessDeniedScreen({super.key});
+  final String reasonCode;
+
+  const AccessDeniedScreen({
+    super.key,
+    required this.reasonCode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +45,7 @@ class AccessDeniedScreen extends StatelessWidget {
               ),
               const Gap(10),
               Text(
-                'SYSTEM SERVICE OFFLINE',
+                reasonCode,
                 style: GoogleFonts.robotoMono(
                   fontSize: 16,
                   color: Colors.redAccent,
