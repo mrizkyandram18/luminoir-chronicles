@@ -3,18 +3,15 @@ import 'package:flutter/material.dart';
 /// Token movement animator with easing curves
 class TokenAnimator {
   final AnimationController controller;
-  final Animation<double> animation;
+  late final Animation<double> animation;
   final VoidCallback onComplete;
 
   TokenAnimator({
     required TickerProvider vsync,
     required this.onComplete,
     Duration duration = const Duration(milliseconds: 600),
-  }) : controller = AnimationController(vsync: vsync, duration: duration),
-       animation = CurvedAnimation(
-         parent: AnimationController(vsync: vsync, duration: duration),
-         curve: Curves.easeOutBack,
-       ) {
+  }) : controller = AnimationController(vsync: vsync, duration: duration) {
+    animation = CurvedAnimation(parent: controller, curve: Curves.easeOutBack);
     controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         onComplete();

@@ -18,8 +18,8 @@ class GameBoardScreenEnhanced extends StatefulWidget {
   const GameBoardScreenEnhanced({super.key});
 
   @override
-  _GameBoardScreenEnhancedState createState() =>
-      _GameBoardScreenEnhancedState(); // Added createState
+  State<GameBoardScreenEnhanced> createState() =>
+      _GameBoardScreenEnhancedState();
 }
 
 class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
@@ -51,7 +51,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                   // Top Bar - Turn Indicator (Wrapped in Selector)
                   Selector<GameController, Player>(
                     selector: (_, ctrl) => ctrl.currentPlayer,
-                    builder: (_, player, __) => _buildTurnIndicator(controller),
+                    builder: (_, player, _) => _buildTurnIndicator(controller),
                   ),
 
                   // The Board (Already handles its own Selector internally)
@@ -64,7 +64,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                 top: 60,
                 right: 16,
                 child: Consumer<GameController>(
-                  builder: (_, ctrl, __) => HudOverlay(
+                  builder: (_, ctrl, _) => HudOverlay(
                     players: ctrl.players,
                     currentPlayerIndex: ctrl.currentPlayerIndex,
                     isOnline: true,
@@ -77,7 +77,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                 top: 180,
                 right: 16,
                 child: FloatingActionButton.small(
-                  backgroundColor: Colors.black.withOpacity(0.8),
+                  backgroundColor: Colors.black.withValues(alpha: 0.8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                     side: const BorderSide(color: Colors.cyanAccent),
@@ -99,7 +99,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                   child: SizedBox(
                     width: 400,
                     child: Consumer<GameController>(
-                      builder: (_, ctrl, __) => ActionPanel(
+                      builder: (_, ctrl, _) => ActionPanel(
                         isMyTurn: ctrl.isMyTurn,
                         isAgentActive: true,
                         canBuyProperty: _canBuyProperty(ctrl),
@@ -125,7 +125,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
               // Uses Selector to only rebuild when message changes
               Selector<GameController, String?>(
                 selector: (_, ctrl) => ctrl.lastEffectMessage,
-                builder: (_, msg, __) {
+                builder: (_, msg, _) {
                   if (msg == null) return const SizedBox.shrink();
                   // We need the color too, but let's grab it from controller since it's cheap
                   return Positioned(
@@ -146,9 +146,10 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
               // DICE ANIMATION
               // Local state _isRolling + Controller.diceRoll
               Consumer<GameController>(
-                builder: (_, ctrl, __) {
-                  if (!_isRolling && ctrl.diceRoll <= 0)
+                builder: (_, ctrl, _) {
+                  if (!_isRolling && ctrl.diceRoll <= 0) {
                     return const SizedBox.shrink();
+                  }
                   return Positioned(
                     bottom: 160,
                     left: 0,
@@ -182,9 +183,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
         gradient: LinearGradient(
           colors: [
             Colors.black,
-            controller.currentPlayer.color.withOpacity(
-              0.2,
-            ), // Changed to withOpacity
+            controller.currentPlayer.color.withValues(alpha: 0.2),
             Colors.black,
           ],
         ),
@@ -233,7 +232,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
             // We need to rebuild when players move.
             shouldRebuild: (prev, next) =>
                 true, // We will handle optimization inside IsometricBoard
-            builder: (ctx, _, __) {
+            builder: (ctx, _, _) {
               return IsometricBoard(
                 graph: controller.boardGraph,
                 players: controller.players,
@@ -468,7 +467,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
   void _showLeaderboard(BuildContext context, GameController controller) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (_) => LeaderboardScreen(
         leaderboardService: controller.leaderboardService,
         currentUserId: controller.currentPlayer.id,

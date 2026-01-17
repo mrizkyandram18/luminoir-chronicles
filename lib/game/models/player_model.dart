@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'rank_tier.dart';
 
 class Player {
   final String id;
@@ -73,13 +74,7 @@ class Player {
     );
   }
 
-  // Rank Title Getter (Cyberpunk Themed)
-  String get rankTitle {
-    if (rankPoints < 100) return 'Script Kiddie';
-    if (rankPoints < 300) return 'Hacker';
-    if (rankPoints < 600) return 'Netrunner';
-    if (rankPoints < 1000) return 'Cypher';
-    if (rankPoints < 1500) return 'Elite Phantom';
-    return 'Cyber Lord';
-  }
+  RankTier get rankTier => rankTierFromPoints(rankPoints);
+
+  String get rankTitle => rankTier.name;
 }

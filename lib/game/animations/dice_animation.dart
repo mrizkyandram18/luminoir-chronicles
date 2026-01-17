@@ -93,8 +93,9 @@ class _DiceAnimationState extends State<DiceAnimation>
   @override
   Widget build(BuildContext context) {
     // If not rolling and no value, show nothing
-    if (!widget.isRolling && widget.diceResult == null)
+    if (!widget.isRolling && widget.diceResult == null) {
       return const SizedBox.shrink();
+    }
 
     return Center(
       child: AnimatedBuilder(

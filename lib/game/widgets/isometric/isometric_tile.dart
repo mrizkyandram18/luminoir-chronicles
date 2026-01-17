@@ -116,7 +116,7 @@ class IsometricTile extends StatelessWidget {
     final Color sideColor = Color.lerp(color, Colors.black, 0.4)!;
 
     return Center(
-      child: Container(
+      child: SizedBox(
         width: width,
         height: width, // Square Top
         child: Stack(
@@ -125,7 +125,7 @@ class IsometricTile extends StatelessWidget {
             // In Isometry, 'Down' on screen is 'Down' in Z? No.
             // We can simulate thickness by rendering a copies offset downwards.
             Transform.translate(
-              offset: Offset(0, 8), // 8px thickness
+              offset: const Offset(0, 8), // 8px thickness
               child: Container(
                 decoration: BoxDecoration(
                   color: sideColor,
@@ -145,7 +145,7 @@ class IsometricTile extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [color.withOpacity(0.9), color],
+                  colors: [color.withValues(alpha: 0.9), color],
                 ),
                 // Minimal shadow
                 boxShadow: [

@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 class DiceChargeWidget extends StatelessWidget {
   final double chargeValue; // 0.0 to 1.0
 
-  const DiceChargeWidget({Key? key, required this.chargeValue})
-    : super(key: key);
+  const DiceChargeWidget({super.key, required this.chargeValue});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +16,7 @@ class DiceChargeWidget extends StatelessWidget {
       width: 200,
       height: 20,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
+        color: Colors.black.withValues(alpha: 0.8),
         border: Border.all(color: Colors.white30),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -34,7 +33,7 @@ class DiceChargeWidget extends StatelessWidget {
                 color: barColor,
                 boxShadow: [
                   BoxShadow(
-                    color: barColor.withOpacity(0.6),
+                    color: barColor.withValues(alpha: 0.6),
                     blurRadius: 10,
                     spreadRadius: 1,
                   ),

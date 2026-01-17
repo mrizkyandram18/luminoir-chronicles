@@ -12,6 +12,7 @@ import '../gatekeeper/gatekeeper_service.dart';
 import 'supabase_service.dart';
 import 'services/multiplayer_service.dart';
 import 'services/leaderboard_service.dart';
+import 'models/match_result.dart';
 
 enum GameMode { practice, ranked }
 
@@ -47,7 +48,7 @@ class GameController extends ChangeNotifier {
   final bool isMultiplayer;
   final String? roomId;
   final String? myChildId;
-  late final MultiplayerService _multiplayerService;
+  MultiplayerService? _multiplayerService;
   StreamSubscription<GameRoom>? _roomSubscription;
   StreamSubscription<List<RoomPlayer>>? _roomPlayersSubscription;
   bool _isMyTurn = true; // Default true for single player
@@ -60,9 +61,14 @@ class GameController extends ChangeNotifier {
   GameMode gameMode = GameMode.practice;
   DateTime? _dicePressStart; // For charging mechanics
 
+  // Match tracking
+  String? _currentMatchId;
+  bool _matchEnded = false;
+
   // Getters for multiplayer state
   bool get isMyTurn => _isMyTurn;
   List<RoomPlayer> get roomPlayers => _roomPlayers;
+  bool get matchEnded => _matchEnded;
 
   GameController(
     this._gatekeeper, {
@@ -131,6 +137,9 @@ class GameController extends ChangeNotifier {
     // Phase 16: Multiplayer subscriptions
     if (isMultiplayer && roomId != null) {
       _initMultiplayerSubscriptions();
+      _currentMatchId = roomId;
+    } else {
+      _currentMatchId = 'practice_${DateTime.now().millisecondsSinceEpoch}';
     }
   }
 
@@ -156,41 +165,46 @@ class GameController extends ChangeNotifier {
 
   /// Initialize multiplayer room subscriptions
   void _initMultiplayerSubscriptions() {
-    if (roomId == null) return;
+    if (roomId == null || _multiplayerService == null) return;
 
     // Listen to room state changes (turn, game status)
-    _roomSubscription = _multiplayerService.getRoomStream(roomId!).listen((
+    _roomSubscription = _multiplayerService!.getRoomStream(roomId!).listen((
       room,
     ) {
       // Check if it's my turn
       _isMyTurn = room.currentTurnChildId == myChildId;
 
-      // If game finished, could handle winner announcement here
-      if (room.isFinished && room.winnerChildId != null) {
-        debugPrint("Game Over! Winner: ${room.winnerChildId}");
+      if (room.isFinished && room.winnerChildId != null && !_matchEnded) {
+        endGame(winnerId: room.winnerChildId);
       }
 
-      notifyListeners();
+      if (!_matchEnded) {
+        notifyListeners();
+      }
     }, onError: (e) => debugPrint("Room stream error: $e"));
 
     // Listen to room players changes (for disconnect detection)
-    _roomPlayersSubscription = _multiplayerService
+    _roomPlayersSubscription = _multiplayerService!
         .getPlayersStream(roomId!)
         .listen((players) {
           _roomPlayers = players;
 
           // Check for disconnects - if only me connected, I win
-          final connectedPlayers = players.where((p) => p.isConnected).toList();
-          if (connectedPlayers.length == 1 &&
-              connectedPlayers.first.childId == myChildId) {
-            // Everyone else disconnected - I win!
-            _multiplayerService.endGame(
-              roomId: roomId!,
-              winnerChildId: myChildId!,
-            );
-          }
+          if (!_matchEnded) {
+            final connectedPlayers = players
+                .where((p) => p.isConnected)
+                .toList();
+            if (connectedPlayers.length == 1 &&
+                connectedPlayers.first.childId == myChildId) {
+              // Everyone else disconnected - I win!
+              _multiplayerService!.endGame(
+                roomId: roomId!,
+                winnerChildId: myChildId!,
+              );
+            }
 
-          notifyListeners();
+            notifyListeners();
+          }
         }, onError: (e) => debugPrint("Room players stream error: $e"));
   }
 
@@ -355,11 +369,20 @@ class GameController extends ChangeNotifier {
     return Alignment.center;
   }
 
+  bool _isDisposed = false;
+
   @override
   void dispose() {
+    _isDisposed = true;
     _roomSubscription?.cancel();
     _roomPlayersSubscription?.cancel();
     super.dispose();
+  }
+
+  void _safeNotifyListeners() {
+    if (!_isDisposed && !_matchEnded) {
+      notifyListeners();
+    }
   }
 
   // Phase 17: Interactive Dice Charge
@@ -388,10 +411,12 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> rollDice({double gaugeValue = 0.5}) async {
+    if (_isDisposed || _matchEnded) return;
+
     // Phase 16: Check if it's my turn in multiplayer mode
     if (isMultiplayer && !_isMyTurn) {
       _lastEffectMessage = "Wait for your turn!";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
@@ -400,19 +425,21 @@ class GameController extends ChangeNotifier {
       _currentParentId,
       _currentChildId,
     );
+    if (_isDisposed || _matchEnded) return;
     if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
     _lastEffectMessage = null; // Clear previous message
     _diceRoll = 0; // Reset logic for Animation Detection
-    notifyListeners();
+    _safeNotifyListeners();
 
     // CRITICAL: Yield to event loop to ensure UI rebuilds with 0 state
     // This guarantees the next update (even if same number) is seen as a change.
     await Future.delayed(const Duration(milliseconds: 100));
+    if (_isDisposed || _matchEnded) return;
 
     // Interactive Roll Logic (KISS: Simple bias)
     int roll;
@@ -431,7 +458,7 @@ class GameController extends ChangeNotifier {
     }
 
     _diceRoll = roll;
-    notifyListeners(); // Show Dice Result (Animation stops rolling and shows number)
+    _safeNotifyListeners(); // Show Dice Result (Animation stops rolling and shows number)
 
     // Give user time to see the dice result before moving (sync with DiceAnimation duration)
     // DiceAnimation takes ~1s to show result then callback.
@@ -443,16 +470,24 @@ class GameController extends ChangeNotifier {
 
     // Wait a tiny bit after last move before landing logic
     await Future.delayed(const Duration(milliseconds: 200));
+    if (_isDisposed || _matchEnded) return;
 
     _handleTileLanding(); // Updates local object state
 
     // SYNC TO SUPABASE
     await _supabase.upsertPlayer(currentPlayer);
+    if (_isDisposed || _matchEnded) return;
 
-    // Auto-save game state on move
-    await saveGame();
+    // Autosave (non-match progress only)
+    await autosave();
+    if (_isDisposed || _matchEnded) return;
 
-    _nextTurn();
+    // Check game over
+    await _checkGameOverCondition();
+
+    if (!_matchEnded && !_isDisposed) {
+      _nextTurn();
+    }
   }
 
   Future<void> _moveCurrentPlayer(int steps) async {
@@ -777,9 +812,30 @@ class GameController extends ChangeNotifier {
     _lastEffectMessage = "EVENT: ${card.title}";
   }
 
-  /// Save the current game state manually
+  /// Autosave: Only saves non-match progress (rank, stats)
+  /// Does NOT save match state to prevent save/load exploits
+  Future<void> autosave() async {
+    if (_matchEnded) return;
+
+    try {
+      for (final p in _players) {
+        if (p.isHuman) {
+          await _supabase.upsertPlayer(p);
+        }
+      }
+    } catch (e) {
+      debugPrint('Autosave error: $e');
+    }
+  }
+
+  /// Save the current game state manually (only for in-progress matches)
   Future<void> saveGame() async {
-    // Check Gatekeeper
+    if (_matchEnded) {
+      _lastEffectMessage = "Cannot save: Match already ended";
+      notifyListeners();
+      return;
+    }
+
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
@@ -790,12 +846,14 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    // 1. Save all players
     for (final p in _players) {
-      await _supabase.upsertPlayer(p);
+      if (gameMode == GameMode.ranked && p.isHuman) {
+        await _leaderboardService.updatePlayerStats(p);
+      } else {
+        await _supabase.upsertPlayer(p);
+      }
     }
 
-    // 2. Save all properties (Only owned ones)
     _properties.forEach((key, prop) async {
       if (prop.ownerId != null) {
         int tileId = int.parse(key.split('_').last);
@@ -807,25 +865,20 @@ class GameController extends ChangeNotifier {
       }
     });
 
-    // Phase 17: Sync Rank Stats if Ranked Mode
-    if (gameMode == GameMode.ranked) {
-      for (final p in _players) {
-        if (p.isHuman) {
-          await _leaderboardService.updatePlayerStats(p);
-        }
-      }
-    }
-
-    // 3. Save Global State
     await _supabase.saveGameState(_currentPlayerIndex);
 
     _lastEffectMessage = "Game Saved Successfully!";
     notifyListeners();
   }
 
-  /// Load the game state manually
+  /// Load the game state manually (only for in-progress matches)
   Future<void> loadGame() async {
-    // Check Gatekeeper
+    if (_matchEnded) {
+      _lastEffectMessage = "Cannot load: Match already ended";
+      notifyListeners();
+      return;
+    }
+
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
@@ -836,7 +889,6 @@ class GameController extends ChangeNotifier {
       return;
     }
 
-    // 1. Load Global State
     final gameState = await _supabase.loadGameState();
     if (gameState != null) {
       _currentPlayerIndex = gameState['current_player_index'] ?? 0;
@@ -849,5 +901,72 @@ class GameController extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  /// Check if player has lost (credits <= 0 and can't recover)
+  bool _checkGameOver() {
+    for (final player in _players) {
+      if (player.credits <= 0 && player.score <= 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Handle game end: Update ranks and record match result
+  Future<void> endGame({String? winnerId}) async {
+    if (_matchEnded) return;
+
+    _matchEnded = true;
+
+    final humanPlayer = _players.firstWhere(
+      (p) => p.isHuman && p.id == _currentChildId,
+      orElse: () => _players.first,
+    );
+
+    final won =
+        winnerId == _currentChildId ||
+        (winnerId == null && humanPlayer.score >= 0);
+
+    final matchResult = MatchResult(
+      matchId: _currentMatchId ?? 'unknown',
+      playerId: _currentChildId,
+      won: won,
+      isRanked: gameMode == GameMode.ranked,
+      completedAt: DateTime.now(),
+      finalScore: humanPlayer.score,
+      finalCredits: humanPlayer.credits,
+    );
+
+    try {
+      await _supabase.recordMatchResult(matchResult.toMap());
+    } catch (e) {
+      debugPrint('Error saving match result: $e');
+    }
+
+    if (gameMode == GameMode.ranked && humanPlayer.isHuman) {
+      await _leaderboardService.updateRankAfterMatch(
+        playerId: _currentChildId,
+        won: won,
+        isRankedMode: true,
+      );
+    }
+
+    await autosave();
+
+    _lastEffectMessage = won
+        ? "Victory! ${gameMode == GameMode.ranked ? 'Rank updated.' : ''}"
+        : "Defeat. ${gameMode == GameMode.ranked ? 'Rank updated.' : ''}";
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  /// Check game over condition after each turn
+  Future<void> _checkGameOverCondition() async {
+    if (_checkGameOver()) {
+      final winner = _players.reduce((a, b) => a.score > b.score ? a : b);
+      await endGame(winnerId: winner.id);
+    }
   }
 }

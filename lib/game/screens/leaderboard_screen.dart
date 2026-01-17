@@ -7,10 +7,10 @@ class LeaderboardScreen extends StatefulWidget {
   final String currentUserId;
 
   const LeaderboardScreen({
-    Key? key,
+    super.key,
     required this.leaderboardService,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -58,12 +58,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       insetPadding: const EdgeInsets.all(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.9),
+          color: Colors.black.withValues(alpha: 0.9),
           border: Border.all(color: Colors.cyanAccent, width: 2),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.cyanAccent.withOpacity(0.5),
+              color: Colors.cyanAccent.withValues(alpha: 0.5),
               blurRadius: 20,
               spreadRadius: 2,
             ),
@@ -150,8 +150,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isMe
-                ? Colors.cyanAccent.withOpacity(0.1)
-                : Colors.white.withOpacity(0.05),
+                ? Colors.cyanAccent.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.05),
             border: Border(
               left: BorderSide(color: _getRankColor(index), width: 4),
             ),
@@ -189,7 +189,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                     Text(
                       player.rankTitle.toUpperCase(),
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 10,
                         letterSpacing: 1,
                       ),
@@ -212,7 +212,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                   Text(
                     "W:${player.wins} L:${player.losses}",
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 10,
                     ),
                   ),
@@ -234,7 +234,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       case 2:
         return const Color(0xFFCD7F32); // Bronze
       default:
-        return Colors.cyanAccent.withOpacity(0.5);
+        return Colors.cyanAccent.withValues(alpha: 0.5);
     }
   }
 }

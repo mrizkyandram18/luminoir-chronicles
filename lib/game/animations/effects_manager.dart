@@ -49,7 +49,7 @@ class EffectsManager {
           color: propertyColor,
           width: 4,
         ), // Border instead of shadow
-        color: propertyColor.withOpacity(0.2),
+        color: propertyColor.withValues(alpha: 0.2),
       ),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),

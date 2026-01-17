@@ -199,6 +199,24 @@ class MultiplayerService {
       debugPrint("Multiplayer: Game ended, winner: $winnerChildId");
     } catch (e) {
       debugPrint("Multiplayer Error ending game: $e");
+      rethrow;
+    }
+  }
+
+  /// Get all players in a room for rank updates
+  Future<List<String>> getRoomPlayerIds(String roomId) async {
+    try {
+      final response = await _supabase
+          .from('room_players')
+          .select('child_id')
+          .eq('room_id', roomId);
+
+      return (response as List)
+          .map((item) => item['child_id'] as String)
+          .toList();
+    } catch (e) {
+      debugPrint("Error getting room player IDs: $e");
+      return [];
     }
   }
 

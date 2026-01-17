@@ -100,7 +100,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 - `lib/game/animations/`: Animation components (TokenAnimator, EffectsManager, DiceAnimation).
 - `lib/game/widgets/`: Reusable UI widgets (ActionPanel, HudOverlay).
 - `lib/gatekeeper/`: Access control (Firestore Logic).
-- `test/`: Comprehensive unit tests (30+ tests).
+- `test/`: Comprehensive unit tests (85+ tests).
 
 ## 🔮 Roadmap
 - [x] Phase 1: MVP Core
@@ -117,9 +117,9 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ## 📊 Quality Metrics
 - ✅ **Flutter Analyze:** 0 issues
-- ✅ **Unit Tests:** 30+ tests
-- ✅ **Code Coverage:** Animation layer, UI widgets, Services
-- ✅ **Production Ready:** KISS/DRY principles applied
+- ✅ **Unit Tests:** 85+ tests
+- ✅ **Code Coverage:** Animation layer, UI widgets, Services, Leaderboard, Multiplayer
+- ✅ **Production Ready:** KISS/DRY principles applied, Standardized Mocks
 
 ## 📚 Documentation
 - [Implementation Summary](IMPLEMENTATION_SUMMARY.md) - Detailed changelog

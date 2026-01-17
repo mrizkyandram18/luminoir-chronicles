@@ -15,10 +15,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: EffectsManager.floatingScore(
-              context: tester.element(find.byType(Scaffold)),
-              text: testText,
-              color: testColor,
+            body: Builder(
+              builder: (context) => EffectsManager.floatingScore(
+                context: context,
+                text: testText,
+                color: testColor,
+              ),
             ),
           ),
         ),
@@ -36,10 +38,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: EffectsManager.floatingScore(
-              context: tester.element(find.byType(Scaffold)),
-              text: '+50',
-              color: Colors.yellow,
+            body: Builder(
+              builder: (context) => EffectsManager.floatingScore(
+                context: context,
+                text: '+50',
+                color: Colors.yellow,
+              ),
             ),
           ),
         ),
@@ -85,11 +89,13 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: EffectsManager.eventCardPopup(
-              context: tester.element(find.byType(Scaffold)),
-              title: testTitle,
-              description: testDescription,
-              cardColor: Colors.purple,
+            body: Builder(
+              builder: (context) => EffectsManager.eventCardPopup(
+                context: context,
+                title: testTitle,
+                description: testDescription,
+                cardColor: Colors.purple,
+              ),
             ),
           ),
         ),
@@ -105,11 +111,13 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: EffectsManager.eventCardPopup(
-              context: tester.element(find.byType(Scaffold)),
-              title: 'Event',
-              description: 'Description',
-              cardColor: Colors.red,
+            body: Builder(
+              builder: (context) => EffectsManager.eventCardPopup(
+                context: context,
+                title: 'Event',
+                description: 'Description',
+                cardColor: Colors.red,
+              ),
             ),
           ),
         ),

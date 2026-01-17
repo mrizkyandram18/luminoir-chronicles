@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dice_charge_widget.dart';
@@ -40,9 +39,12 @@ class ActionPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.85),
+        color: Colors.black.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.3), width: 1),
+        border: Border.all(
+          color: Colors.cyanAccent.withValues(alpha: 0.3),
+          width: 1,
+        ),
         boxShadow: const [
           BoxShadow(color: Colors.black, offset: Offset(0, 4), blurRadius: 0),
         ],
@@ -186,7 +188,7 @@ class ActionPanel extends StatelessWidget {
 class HoldToRollButton extends StatefulWidget {
   final Function(double) onRoll;
 
-  const HoldToRollButton({Key? key, required this.onRoll}) : super(key: key);
+  const HoldToRollButton({super.key, required this.onRoll});
 
   @override
   State<HoldToRollButton> createState() => _HoldToRollButtonState();
@@ -244,7 +246,7 @@ class _HoldToRollButtonState extends State<HoldToRollButton> {
           boxShadow: [
             if (!_isHolding)
               BoxShadow(
-                color: Colors.cyanAccent.withOpacity(0.5),
+                color: Colors.cyanAccent.withValues(alpha: 0.5),
                 blurRadius: 10,
               ),
           ],

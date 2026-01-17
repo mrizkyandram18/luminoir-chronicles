@@ -8,10 +8,13 @@ import 'package:cyber_tycoon/gatekeeper/gatekeeper_service.dart';
 import 'package:cyber_tycoon/gatekeeper/gatekeeper_result.dart';
 import 'package:cyber_tycoon/game/models/player_model.dart';
 import 'package:mockito/mockito.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ============================================================
 // MOCK SERVICES
 // ============================================================
+
+class MockSupabaseClient extends Mock implements SupabaseClient {}
 
 class MockGatekeeperService extends Mock implements GatekeeperService {
   @override
@@ -30,40 +33,45 @@ class MockGatekeeperService extends Mock implements GatekeeperService {
 
 class MockSupabaseService extends Mock implements SupabaseService {
   @override
-  Future<void> initializeDefaultPlayersIfNeeded(List<Player> players) {
-    return super.noSuchMethod(
-      Invocation.method(#initializeDefaultPlayersIfNeeded, [players]),
-      returnValue: Future<void>.value(),
-      returnValueForMissingStub: Future<void>.value(),
-    );
-  }
+  SupabaseClient get client => MockSupabaseClient();
 
   @override
-  Stream<List<Map<String, dynamic>>> getPropertiesStream() {
-    return super.noSuchMethod(
-      Invocation.method(#getPropertiesStream, []),
-      returnValue: Stream<List<Map<String, dynamic>>>.empty(),
-      returnValueForMissingStub: Stream<List<Map<String, dynamic>>>.empty(),
-    );
-  }
-
+  Future<void> initializeDefaultPlayersIfNeeded(List<Player> players) async {}
   @override
-  Stream<List<Player>> getPlayersStream() {
-    return super.noSuchMethod(
-      Invocation.method(#getPlayersStream, []),
-      returnValue: Stream<List<Player>>.empty(),
-      returnValueForMissingStub: Stream<List<Player>>.empty(),
-    );
-  }
-
+  Stream<List<Map<String, dynamic>>> getPropertiesStream() =>
+      const Stream.empty();
   @override
-  Future<void> upsertPlayer(Player player) {
-    return super.noSuchMethod(
-      Invocation.method(#upsertPlayer, [player]),
-      returnValue: Future<void>.value(),
-      returnValueForMissingStub: Future<void>.value(),
-    );
-  }
+  Stream<List<Player>> getPlayersStream() => const Stream.empty();
+  @override
+  Future<void> upsertPlayer(Player player) async {}
+  @override
+  Future<void> updatePlayerPosition(String playerId, int pos) async {}
+  @override
+  Future<void> updatePlayerCredits(String playerId, int credits) async {}
+  @override
+  Future<void> updatePlayerScore(String id, int s, int m) async {}
+  @override
+  Future<void> resetGame(List<Player> d) async {}
+  @override
+  Future<void> saveGameState(int i) async {}
+  @override
+  Future<Map<String, dynamic>?> loadGameState() async => null;
+  @override
+  Future<void> recordMatchResult(Map<String, dynamic> d) async {}
+  @override
+  Future<List<Map<String, dynamic>>> queryLeaderboard({
+    int limit = 100,
+  }) async => [];
+  @override
+  Future<List<Map<String, dynamic>>> queryPlayersByIds(
+    List<String> ids,
+  ) async => [];
+  @override
+  Future<Map<String, dynamic>?> queryPlayerRankStats(String id) async => null;
+  @override
+  Future<int> queryPlayerRankPosition(String id) async => 0;
+  @override
+  Future<void> updatePlayerRankStats(String id, Map<String, dynamic> u) async {}
 }
 
 class MockMultiplayerService extends Mock implements MultiplayerService {
@@ -363,9 +371,9 @@ void main() {
       // ASSERT
       expect(controller.players.length, equals(4));
       expect(controller.players[0].name, equals('Player 1'));
-      expect(controller.players[1].name, equals('Player 2'));
-      expect(controller.players[2].name, equals('Player 3'));
-      expect(controller.players[3].name, equals('Player 4'));
+      expect(controller.players[1].name, equals('Bot 2'));
+      expect(controller.players[2].name, equals('Bot 3'));
+      expect(controller.players[3].name, equals('Bot 4'));
     });
 
     test('GameController should have 20 tiles on the board', () {

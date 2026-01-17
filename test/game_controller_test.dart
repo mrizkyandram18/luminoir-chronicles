@@ -24,6 +24,7 @@ class BetterMockSupabase extends Fake implements SupabaseService {
   final _playerStreamController = StreamController<List<Player>>.broadcast();
   final _propStreamController =
       StreamController<List<Map<String, dynamic>>>.broadcast();
+  int upsertPlayerCallCount = 0;
 
   @override
   Stream<List<Player>> getPlayersStream() => _playerStreamController.stream;
@@ -39,18 +40,55 @@ class BetterMockSupabase extends Fake implements SupabaseService {
   Future<void> saveGameState(int currentPlayerIndex) async {}
 
   @override
-  Future<void> upsertPlayer(Player p) async {}
+  Future<void> upsertPlayer(Player p) async {
+    upsertPlayerCallCount++;
+  }
 
   @override
-  Future<void> upsertProperty(int t, String o, int l) async {}
+  Future<void> recordMatchResult(Map<String, dynamic> data) async {}
+
+  @override
+  Future<List<Map<String, dynamic>>> queryLeaderboard({
+    int limit = 100,
+  }) async => [];
+
+  @override
+  Future<List<Map<String, dynamic>>> queryPlayersByIds(
+    List<String> ids,
+  ) async => [];
+
+  @override
+  Future<Map<String, dynamic>?> queryPlayerRankStats(String id) async => null;
+
+  @override
+  Future<int> queryPlayerRankPosition(String id) async => 0;
+
+  @override
+  Future<void> updatePlayerRankStats(String id, Map<String, dynamic> u) async {}
 }
 
 class MockLeaderboardService extends Fake implements LeaderboardService {
   int updateCallCount = 0;
+  int updateRankCallCount = 0;
+  String? lastPlayerId;
+  bool? lastWon;
+  bool? lastIsRanked;
 
   @override
   Future<void> updatePlayerStats(Player player) async {
     updateCallCount++;
+  }
+
+  @override
+  Future<void> updateRankAfterMatch({
+    required String playerId,
+    required bool won,
+    required bool isRankedMode,
+  }) async {
+    updateRankCallCount++;
+    lastPlayerId = playerId;
+    lastWon = won;
+    lastIsRanked = isRankedMode;
   }
 }
 
@@ -118,5 +156,102 @@ void main() {
 
     // In Ranked mode, saves should sync stats for human players
     expect(leaderboard.updateCallCount, greaterThan(0));
+  });
+
+  test('Practice mode does NOT update rank on game end', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    expect(controller.gameMode, GameMode.practice);
+    expect(controller.matchEnded, false);
+
+    await controller.endGame(winnerId: 'child');
+
+    expect(controller.matchEnded, true);
+    expect(leaderboard.updateRankCallCount, 0);
+  });
+
+  test('Ranked mode updates rank on game end', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: true,
+    );
+
+    expect(controller.gameMode, GameMode.ranked);
+
+    await controller.endGame(winnerId: 'child');
+
+    expect(controller.matchEnded, true);
+    expect(leaderboard.updateRankCallCount, 1);
+    expect(leaderboard.lastPlayerId, 'child');
+    expect(leaderboard.lastWon, true);
+    expect(leaderboard.lastIsRanked, true);
+  });
+
+  test('Cannot save after match ended', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    await controller.endGame(winnerId: 'child');
+    expect(controller.matchEnded, true);
+
+    await controller.saveGame();
+    expect(controller.lastEffectMessage, contains('Match already ended'));
+  });
+
+  test('Cannot load after match ended', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    await controller.endGame(winnerId: 'child');
+    expect(controller.matchEnded, true);
+
+    await controller.loadGame();
+    expect(controller.lastEffectMessage, contains('Match already ended'));
+  });
+
+  test('Autosave does not run after match ended', () async {
+    controller = GameController(
+      gatekeeper,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+      isMultiplayer: false,
+    );
+
+    await controller.endGame(winnerId: 'child');
+    final initialCallCount = supabase.upsertPlayerCallCount;
+
+    await controller.autosave();
+
+    expect(supabase.upsertPlayerCallCount, initialCallCount);
   });
 }

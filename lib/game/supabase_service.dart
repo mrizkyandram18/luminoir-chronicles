@@ -5,6 +5,7 @@ import 'models/player_model.dart';
 /// Enhanced Supabase service with granular sync methods and error recovery
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
+  SupabaseClient get client => _client;
 
   /// Listen to the 'players' table for real-time updates.
   Stream<List<Player>> getPlayersStream() {
@@ -145,6 +146,92 @@ class SupabaseService {
     } catch (e) {
       debugPrint("Supabase Error loading game state: $e");
       return null;
+    }
+  }
+
+  /// Record match result for rank/history
+  Future<void> recordMatchResult(Map<String, dynamic> data) async {
+    try {
+      await _client.from('match_results').upsert(data);
+    } catch (e) {
+      debugPrint("Supabase Error recording match result: $e");
+    }
+  }
+
+  /// Get human players sorted by rank points (for leaderboard)
+  Future<List<Map<String, dynamic>>> queryLeaderboard({int limit = 100}) async {
+    try {
+      final response = await _client
+          .from('players')
+          .select()
+          .eq('is_human', true)
+          .order('rank_points', ascending: false)
+          .order('wins', ascending: false)
+          .limit(limit);
+      return (response as List).cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint("Supabase Error querying leaderboard: $e");
+      return [];
+    }
+  }
+
+  /// Get specific players data (for friend leaderboard)
+  Future<List<Map<String, dynamic>>> queryPlayersByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    try {
+      final response = await _client
+          .from('players')
+          .select()
+          .eq('is_human', true)
+          .order('rank_points', ascending: false);
+
+      final data = (response as List).cast<Map<String, dynamic>>();
+      return data.where((p) => ids.contains(p['id'])).toList();
+    } catch (e) {
+      debugPrint("Supabase Error querying players by ids: $e");
+      return [];
+    }
+  }
+
+  /// Get player rank stats
+  Future<Map<String, dynamic>?> queryPlayerRankStats(String playerId) async {
+    try {
+      return await _client
+          .from('players')
+          .select('rank_points, wins, losses')
+          .eq('id', playerId)
+          .single();
+    } catch (e) {
+      debugPrint("Supabase Error querying player rank stats: $e");
+      return null;
+    }
+  }
+
+  /// Get player position in leaderboard
+  Future<int> queryPlayerRankPosition(String playerId) async {
+    try {
+      final response = await _client
+          .from('leaderboard')
+          .select('rank_position')
+          .eq('id', playerId)
+          .maybeSingle();
+      return (response?['rank_position'] as int?) ?? 0;
+    } catch (e) {
+      debugPrint("Supabase Error querying player rank position: $e");
+      return 0;
+    }
+  }
+
+  /// Update player rank stats
+  Future<void> updatePlayerRankStats(
+    String playerId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      await _client.from('players').update(updates).eq('id', playerId);
+    } catch (e) {
+      debugPrint("Supabase Error updating player rank stats: $e");
+      rethrow;
     }
   }
 }
