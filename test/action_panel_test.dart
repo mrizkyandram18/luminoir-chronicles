@@ -20,6 +20,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -29,7 +30,7 @@ void main() {
 
       // DiceGauge shows 'HOLD TO ROLL' when active
       expect(find.text('HOLD TO ROLL'), findsOneWidget);
-      expect(find.text('BUY PROPERTY'), findsOneWidget);
+      expect(find.text('BUY'), findsOneWidget);
       expect(find.text('UPGRADE'), findsOneWidget);
       expect(find.text('SAVE'), findsOneWidget);
       expect(find.text('LOAD'), findsOneWidget);
@@ -49,6 +50,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -77,6 +79,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -113,6 +116,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -141,6 +145,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -153,6 +158,36 @@ void main() {
         find.byKey(const Key('btn_upgrade')),
       );
       expect(upgradeButton.onPressed, isNotNull);
+    });
+
+    testWidgets('should show takeover button when enabled', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ActionPanel(
+              isMyTurn: true,
+              isAgentActive: true,
+              canBuyProperty: false,
+              canUpgradeProperty: false,
+              canTakeoverProperty: true, // Enable Takeover
+              onRollDice: (val) {},
+              onBuyProperty: () {},
+              onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
+              onSaveGame: () {},
+              onLoadGame: () {},
+            ),
+          ),
+        ),
+      );
+
+      final takeoverFinder = find.byKey(const Key('btn_takeover'));
+      expect(takeoverFinder, findsOneWidget);
+
+      final takeoverButton = tester.widget<ElevatedButton>(takeoverFinder);
+      expect(takeoverButton.onPressed, isNotNull);
     });
 
     testWidgets('should show loading state', (WidgetTester tester) async {
@@ -168,6 +203,7 @@ void main() {
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () {},
               onLoadGame: () {},
             ),
@@ -200,6 +236,7 @@ void main() {
               onRollDice: (val) => rollDiceCalled = true,
               onBuyProperty: () {},
               onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
               onSaveGame: () => saveGameCalled = true,
               onLoadGame: () => loadGameCalled = true,
             ),

@@ -130,6 +130,13 @@ class HudOverlay extends StatelessWidget {
                       player.scoreMultiplier.toString(),
                       Colors.purpleAccent,
                     ),
+                  const SizedBox(width: 8),
+                  // Rank Pts
+                  _buildStat(
+                    '🏆',
+                    player.rankPoints.toString(),
+                    Colors.orangeAccent,
+                  ),
                 ],
               ),
             );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 /// Centralized manager for Lottie effects and floating notifications
 class EffectsManager {
   /// Show floating score/credits notification
+  /// Show floating score/credits notification
   static Widget floatingScore({
     required BuildContext context,
     required String text,
@@ -23,7 +24,11 @@ class EffectsManager {
                 fontSize: 24 + (8 * value),
                 fontWeight: FontWeight.bold,
                 shadows: [
-                  Shadow(color: color.withValues(alpha: 0.8), blurRadius: 10),
+                  Shadow(
+                    color: Colors.black,
+                    blurRadius: 0,
+                    offset: Offset(2, 2),
+                  ), // Solid Shadow
                 ],
               ),
             ),
@@ -40,13 +45,11 @@ class EffectsManager {
       height: 100,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: propertyColor.withValues(alpha: 0.6),
-            blurRadius: 30,
-            spreadRadius: 10,
-          ),
-        ],
+        border: Border.all(
+          color: propertyColor,
+          width: 4,
+        ), // Border instead of shadow
+        color: propertyColor.withOpacity(0.2),
       ),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
@@ -84,38 +87,45 @@ class EffectsManager {
         return Transform.translate(
           offset: Offset(0, 100 * (1 - value)),
           child: Opacity(
-            opacity: value,
+            opacity: value.clamp(0.0, 1.0),
             child: Container(
               padding: const EdgeInsets.all(20),
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.cyanAccent, width: 2),
-                boxShadow: [
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
                   BoxShadow(
-                    color: Colors.cyanAccent.withValues(alpha: 0.5),
-                    blurRadius: 20,
-                    spreadRadius: 5,
+                    color: Colors.black45, // Solid shadow
+                    blurRadius: 0,
+                    offset: Offset(4, 4),
                   ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    color: Colors.black26,
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     description,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ],
               ),
@@ -134,13 +144,10 @@ class EffectsManager {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: glowColor.withValues(alpha: 0.6 * intensity),
-            blurRadius: 20 * intensity,
-            spreadRadius: 10 * intensity,
-          ),
-        ],
+        border: Border.all(
+          color: glowColor,
+          width: 2 * intensity,
+        ), // Simple border glow
       ),
     );
   }

@@ -3,87 +3,173 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game_controller.dart';
 import '../models/tile_model.dart';
-import '../models/player_model.dart';
+import '../models/player_model.dart'; // Added missing import
+
 import '../widgets/hud_overlay.dart';
 import '../widgets/action_panel.dart';
 import '../animations/effects_manager.dart';
+import '../widgets/isometric/isometric_board.dart';
+import '../animations/dice_animation.dart'; // Added import for DiceAnimation
+import 'leaderboard_screen.dart';
 
 /// Enhanced Game Board Screen with integrated HUD and Action Panel
-class GameBoardScreenEnhanced extends StatelessWidget {
+class GameBoardScreenEnhanced extends StatefulWidget {
+  // Changed to StatefulWidget
   const GameBoardScreenEnhanced({super.key});
 
   @override
+  _GameBoardScreenEnhancedState createState() =>
+      _GameBoardScreenEnhancedState(); // Added createState
+}
+
+class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
+  // Added State class
+  // State
+  bool _isRolling = false;
+
+  @override
   Widget build(BuildContext context) {
-    final controller = context.watch<GameController>();
+    // OPTIMIZATION: Use read() here. We DO NOT want the entire Scaffold to rebuild on every tick.
+    final controller = context.read<GameController>();
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Main Game Board
-            Column(
-              children: [
-                // Top Bar - Turn Indicator
-                _buildTurnIndicator(controller),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            colors: [Color(0xFF1a237e), Colors.black],
+            center: Alignment.center,
+            radius: 1.5,
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // Main Game Board
+              Column(
+                children: [
+                  // Top Bar - Turn Indicator (Wrapped in Selector)
+                  Selector<GameController, Player>(
+                    selector: (_, ctrl) => ctrl.currentPlayer,
+                    builder: (_, player, __) => _buildTurnIndicator(controller),
+                  ),
 
-                // The Board
-                Expanded(child: _buildBoard(context, controller)),
-              ],
-            ),
-
-            // HUD Overlay (Top Right)
-            Positioned(
-              top: 60,
-              right: 16,
-              child: HudOverlay(
-                players: controller.players,
-                currentPlayerIndex: controller.currentPlayerIndex,
-                isOnline: true, // TODO: Get from connection state
+                  // The Board (Already handles its own Selector internally)
+                  Expanded(child: _buildBoard(context, controller)),
+                ],
               ),
-            ),
 
-            // Action Panel (Bottom Center)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: SizedBox(
-                  width: 400,
-                  child: ActionPanel(
-                    isMyTurn: controller.isMyTurn,
-                    isAgentActive: true, // TODO: Get from gatekeeper
-                    canBuyProperty: _canBuyProperty(controller),
-                    canUpgradeProperty: _canUpgradeProperty(controller),
-                    onRollDice: (val) =>
-                        _handleRollDice(context, controller, val),
-                    onBuyProperty: () =>
-                        _handleBuyProperty(context, controller),
-                    onUpgradeProperty: () =>
-                        _handleUpgradeProperty(context, controller),
-                    onSaveGame: () => _handleSaveGame(context, controller),
-                    onLoadGame: () => _handleLoadGame(context, controller),
+              // HUD Overlay (Top Right) -> Needs updates on credits/turn
+              Positioned(
+                top: 60,
+                right: 16,
+                child: Consumer<GameController>(
+                  builder: (_, ctrl, __) => HudOverlay(
+                    players: ctrl.players,
+                    currentPlayerIndex: ctrl.currentPlayerIndex,
+                    isOnline: true,
                   ),
                 ),
               ),
-            ),
 
-            // Floating Effects Layer
-            if (controller.lastEffectMessage != null)
+              // Leaderboard Button (Below HUD)
               Positioned(
-                top: 120,
+                top: 180,
+                right: 16,
+                child: FloatingActionButton.small(
+                  backgroundColor: Colors.black.withOpacity(0.8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.cyanAccent),
+                  ),
+                  onPressed: () => _showLeaderboard(context, controller),
+                  child: const Icon(
+                    Icons.leaderboard,
+                    color: Colors.cyanAccent,
+                  ),
+                ),
+              ),
+
+              // Action Panel (Bottom Center) -> Critical for State
+              Positioned(
+                bottom: 16,
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: EffectsManager.floatingScore(
-                    context: context,
-                    text: controller.lastEffectMessage!,
-                    color: controller.currentPlayer.color,
+                  child: SizedBox(
+                    width: 400,
+                    child: Consumer<GameController>(
+                      builder: (_, ctrl, __) => ActionPanel(
+                        isMyTurn: ctrl.isMyTurn,
+                        isAgentActive: true,
+                        canBuyProperty: _canBuyProperty(ctrl),
+                        canUpgradeProperty: _canUpgradeProperty(ctrl),
+                        canTakeoverProperty: _canTakeoverProperty(ctrl),
+                        isLoading: _isRolling,
+                        onRollDice: (val) =>
+                            _handleRollDice(context, ctrl, val),
+                        onBuyProperty: () => _handleBuyProperty(context, ctrl),
+                        onUpgradeProperty: () =>
+                            _handleUpgradeProperty(context, ctrl),
+                        onTakeoverProperty: () =>
+                            _handleTakeoverProperty(context, ctrl),
+                        onSaveGame: () => _handleSaveGame(context, ctrl),
+                        onLoadGame: () => _handleLoadGame(context, ctrl),
+                      ),
+                    ),
                   ),
                 ),
               ),
-          ],
+
+              // Floating Effects Layer
+              // Uses Selector to only rebuild when message changes
+              Selector<GameController, String?>(
+                selector: (_, ctrl) => ctrl.lastEffectMessage,
+                builder: (_, msg, __) {
+                  if (msg == null) return const SizedBox.shrink();
+                  // We need the color too, but let's grab it from controller since it's cheap
+                  return Positioned(
+                    top: 120,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: EffectsManager.floatingScore(
+                        context: context,
+                        text: msg,
+                        color: controller.currentPlayer.color,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // DICE ANIMATION
+              // Local state _isRolling + Controller.diceRoll
+              Consumer<GameController>(
+                builder: (_, ctrl, __) {
+                  if (!_isRolling && ctrl.diceRoll <= 0)
+                    return const SizedBox.shrink();
+                  return Positioned(
+                    bottom: 160,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: Transform.scale(
+                        scale: 0.6,
+                        child: DiceAnimation(
+                          isRolling: _isRolling,
+                          diceResult: ctrl.diceRoll > 0 ? ctrl.diceRoll : null,
+                          onRollComplete: () {
+                            if (mounted) setState(() => _isRolling = false);
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -96,7 +182,9 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             Colors.black,
-            controller.currentPlayer.color.withValues(alpha: 0.2),
+            controller.currentPlayer.color.withOpacity(
+              0.2,
+            ), // Changed to withOpacity
             Colors.black,
           ],
         ),
@@ -130,167 +218,32 @@ class GameBoardScreenEnhanced extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: 1.0,
         child: Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            image: const DecorationImage(
-              image: AssetImage('assets/images/board/isometric_board.png'),
-              fit: BoxFit.contain,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: controller.currentPlayer.color.withValues(alpha: 0.3),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Render Tiles
-              ...List.generate(controller.tiles.length, (index) {
-                return _buildTile(controller, index);
-              }),
-
-              // Render Tokens with smooth animation
-              ...controller.players.map((player) {
-                return AnimatedAlign(
-                  duration: const Duration(milliseconds: 600),
-                  curve: Curves.easeOutBack,
-                  alignment: controller.getPlayerAlignment(player),
-                  child: _buildToken(
-                    player,
-                    controller.currentPlayer.id == player.id,
-                  ),
-                );
-              }),
-            ],
+          clipBehavior: Clip.none,
+          // Use Selector to ONLY rebuild board when ESSENTIAL data changes
+          // The MAP itself (nodes) is static, so we don't need to rebuild it for movement.
+          // BUT IsometricBoard handles both layers.
+          // Ideally: IsometricBoard should be smarter.
+          // For now, we pass the controller, but inside IsometricBoard is where we must optimize.
+          // OPTIMIZATION:
+          // We wrap the board in a RepaintBoundary here as well to catch external rebuilds.
+          child: Selector<GameController, int>(
+            selector: (_, ctrl) =>
+                ctrl.currentPlayerIndex, // Only rebuild on turn change?
+            // Actually, movement updates 'position' but not 'currentPlayerIndex' often.
+            // We need to rebuild when players move.
+            shouldRebuild: (prev, next) =>
+                true, // We will handle optimization inside IsometricBoard
+            builder: (ctx, _, __) {
+              return IsometricBoard(
+                graph: controller.boardGraph,
+                players: controller.players,
+                tileSize: 64.0,
+                properties: controller.properties,
+              );
+            },
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTile(GameController controller, int index) {
-    final tile = controller.tiles[index];
-    Color tileColor;
-    Color borderColor = Colors.transparent;
-
-    // Determine Base Color
-    switch (tile.type) {
-      case TileType.reward:
-        tileColor = Colors.greenAccent;
-        break;
-      case TileType.penalty:
-        tileColor = Colors.redAccent;
-        break;
-      case TileType.event:
-        tileColor = Colors.purpleAccent;
-        break;
-      case TileType.start:
-        tileColor = Colors.white;
-        break;
-      case TileType.property:
-        tileColor = Colors.amberAccent;
-        break;
-      default:
-        tileColor = Colors.cyanAccent.withValues(alpha: 0.3);
-    }
-
-    // Determine Owner Border
-    if (tile.ownerId != null) {
-      final owner = controller.players.firstWhere(
-        (p) => p.id == tile.ownerId,
-        orElse: () => controller.players[0],
-      );
-      borderColor = owner.color;
-      tileColor = owner.color.withValues(alpha: 0.2);
-    }
-
-    return Align(
-      alignment: controller.boardPath[index],
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.8),
-          border: Border.all(
-            color: tile.ownerId != null ? borderColor : tileColor,
-            width: tile.ownerId != null ? 3.0 : 1.5,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: (tile.ownerId != null ? borderColor : tileColor)
-                  .withValues(alpha: 0.3),
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                tile.ownerId != null ? "OWNED" : tile.label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.robotoMono(
-                  color: tile.ownerId != null ? borderColor : tileColor,
-                  fontSize: 7,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              // Property Info
-              if (tile.type == TileType.property && tile.ownerId == null)
-                Text(
-                  "\$${tile.value}",
-                  style: const TextStyle(color: Colors.white, fontSize: 8),
-                ),
-              // Upgrade Level
-              if (tile.ownerId != null)
-                Column(
-                  children: [
-                    Text(
-                      "Lv ${tile.upgradeLevel}",
-                      style: GoogleFonts.orbitron(
-                        color: Colors.yellow,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      "R: \$${tile.rent}",
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 7,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToken(Player player, bool isActive) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [Colors.white, player.color]),
-        border: isActive ? Border.all(color: Colors.white, width: 3) : null,
-        boxShadow: [
-          BoxShadow(
-            color: player.color.withValues(alpha: isActive ? 0.8 : 0.5),
-            blurRadius: isActive ? 20 : 10,
-            spreadRadius: isActive ? 3 : 1,
-          ),
-        ],
-      ),
-      child: const Icon(Icons.flight, color: Colors.black, size: 24),
     );
   }
 
@@ -306,12 +259,36 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         currentTile.ownerId == controller.currentPlayer.id;
   }
 
+  bool _canTakeoverProperty(GameController controller) {
+    final currentTile = controller.tiles[controller.currentPlayer.position];
+    if (currentTile.type != TileType.property || currentTile.ownerId == null) {
+      return false;
+    }
+    // Cannot takeover own property
+    if (currentTile.ownerId == controller.currentPlayer.id) return false;
+
+    // Check credits (Approximate calculation for UI)
+    // Real validation happens in controller
+    int baseValue = currentTile.value;
+    int upgradeCost = (baseValue * 0.5).round();
+    int totalValue = baseValue + (upgradeCost * currentTile.upgradeLevel);
+    int estimatedCost = totalValue * 2;
+
+    return controller.currentPlayer.credits >= estimatedCost;
+  }
+
   // Action Handlers
   Future<void> _handleRollDice(
     BuildContext context,
     GameController controller,
     double gaugeValue,
   ) async {
+    // 1. Start Rolling Animation
+    setState(() {
+      _isRolling = true;
+    });
+
+    // Trigger Controller
     await controller.rollDice(gaugeValue: gaugeValue);
 
     // Show Event Card if triggered
@@ -350,6 +327,84 @@ class GameBoardScreenEnhanced extends StatelessWidget {
         controller.lastEffectMessage!,
         Colors.purpleAccent,
       );
+    }
+  }
+
+  Future<void> _handleTakeoverProperty(
+    BuildContext context,
+    GameController controller,
+  ) async {
+    // 1. Calculate Cost (Approximate for Dialog)
+    final currentTile = controller.tiles[controller.currentPlayer.position];
+    int baseValue = currentTile.value;
+    int upgradeCost = (baseValue * 0.5).round();
+    int totalValue = baseValue + (upgradeCost * currentTile.upgradeLevel);
+    int estimatedCost = totalValue * 2;
+
+    // 2. Show Confirmation Dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Colors.redAccent, width: 2),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          "HOSTILE TAKEOVER",
+          style: GoogleFonts.orbitron(
+            color: Colors.redAccent,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Seize this property logic?",
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "COST: $estimatedCost CREDITS",
+              style: GoogleFonts.orbitron(
+                color: Colors.yellowAccent,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "(2x Property Value paid to owner)",
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text("CANCEL", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              "INITIATE TAKEOVER",
+              style: GoogleFonts.orbitron(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await controller.buyPropertyTakeover(controller.currentPlayer.position);
+      if (context.mounted && controller.lastEffectMessage != null) {
+        _showSnackBar(context, controller.lastEffectMessage!, Colors.redAccent);
+      }
     }
   }
 
@@ -406,6 +461,17 @@ class GameBoardScreenEnhanced extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showLeaderboard(BuildContext context, GameController controller) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.8),
+      builder: (_) => LeaderboardScreen(
+        leaderboardService: controller.leaderboardService,
+        currentUserId: controller.currentPlayer.id,
       ),
     );
   }

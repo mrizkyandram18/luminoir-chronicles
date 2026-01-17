@@ -11,6 +11,9 @@ import 'graph/board_graph.dart';
 import '../gatekeeper/gatekeeper_service.dart';
 import 'supabase_service.dart';
 import 'services/multiplayer_service.dart';
+import 'services/leaderboard_service.dart';
+
+enum GameMode { practice, ranked }
 
 class GameController extends ChangeNotifier {
   // Players (Synced from Stream)
@@ -50,6 +53,13 @@ class GameController extends ChangeNotifier {
   bool _isMyTurn = true; // Default true for single player
   List<RoomPlayer> _roomPlayers = [];
 
+  // Phase 17: Leaderboard & Game Modes
+  late final LeaderboardService _leaderboardService;
+  LeaderboardService get leaderboardService => _leaderboardService;
+
+  GameMode gameMode = GameMode.practice;
+  DateTime? _dicePressStart; // For charging mechanics
+
   // Getters for multiplayer state
   bool get isMyTurn => _isMyTurn;
   List<RoomPlayer> get roomPlayers => _roomPlayers;
@@ -60,18 +70,22 @@ class GameController extends ChangeNotifier {
     required String childId,
     SupabaseService? supabaseService, // Optional injection for testing
     MultiplayerService? multiplayerService, // Optional injection for testing
+    LeaderboardService? leaderboardService, // Optional injection for testing
     this.isMultiplayer = false,
     this.roomId,
     this.myChildId,
   }) : _currentParentId = parentId,
        _currentChildId = childId,
        _supabase = supabaseService ?? SupabaseService() {
+    _leaderboardService = leaderboardService ?? LeaderboardService(_supabase);
+
     // Initialize properties from graph
     _initializeProperties();
 
     // Initialize default players
     if (isMultiplayer) {
       _multiplayerService = multiplayerService ?? MultiplayerService();
+      gameMode = GameMode.ranked; // Multiplayer is always ranked by default
     }
 
     _generateEventDeck();
@@ -232,11 +246,32 @@ class GameController extends ChangeNotifier {
   EventCard? get currentEventCard => _currentEventCard;
 
   List<Player> _createDefaultPlayers() {
+    bool isPractice = gameMode == GameMode.practice;
     return [
-      Player(id: 'p1', name: 'Player 1', color: Colors.cyanAccent),
-      Player(id: 'p2', name: 'Player 2', color: Colors.purpleAccent),
-      Player(id: 'p3', name: 'Player 3', color: Colors.orangeAccent),
-      Player(id: 'p4', name: 'Player 4', color: Colors.greenAccent),
+      Player(
+        id: 'p1',
+        name: 'Player 1',
+        color: Colors.cyanAccent,
+        isHuman: true,
+      ),
+      Player(
+        id: 'p2',
+        name: 'Bot 2',
+        color: Colors.purpleAccent,
+        isHuman: !isPractice,
+      ),
+      Player(
+        id: 'p3',
+        name: 'Bot 3',
+        color: Colors.orangeAccent,
+        isHuman: !isPractice,
+      ),
+      Player(
+        id: 'p4',
+        name: 'Bot 4',
+        color: Colors.greenAccent,
+        isHuman: !isPractice,
+      ),
     ];
   }
 
@@ -249,6 +284,10 @@ class GameController extends ChangeNotifier {
   int get currentPlayerIndex => _currentPlayerIndex; // For UI highlighting
 
   String? get lastEffectMessage => _lastEffectMessage;
+
+  // Exposed for Isometric Board
+  BoardGraph get boardGraph => _boardGraph;
+  Map<String, PropertyDetails> get properties => _properties;
 
   // ADAPTER: Tiles for legacy UI
   // Renders the board based on Graph + PropertyDetails
@@ -323,6 +362,31 @@ class GameController extends ChangeNotifier {
     super.dispose();
   }
 
+  // Phase 17: Interactive Dice Charge
+  void startDiceCharge() {
+    if (isMultiplayer && !_isMyTurn) return;
+    _dicePressStart = DateTime.now();
+  }
+
+  Future<void> releaseDiceCharge() async {
+    if (_dicePressStart == null) {
+      await rollDice();
+      return;
+    }
+
+    final pressDuration = DateTime.now()
+        .difference(_dicePressStart!)
+        .inMilliseconds;
+    _dicePressStart = null;
+
+    // Calculate gauge value (0.0 to 1.0) based on duration
+    // Max charge is 2 seconds (2000ms)
+    double gauge = (pressDuration / 2000).clamp(0.0, 1.0);
+
+    // Pass gauge to rollDice
+    await rollDice(gaugeValue: gauge);
+  }
+
   Future<void> rollDice({double gaugeValue = 0.5}) async {
     // Phase 16: Check if it's my turn in multiplayer mode
     if (isMultiplayer && !_isMyTurn) {
@@ -343,7 +407,12 @@ class GameController extends ChangeNotifier {
     }
 
     _lastEffectMessage = null; // Clear previous message
+    _diceRoll = 0; // Reset logic for Animation Detection
     notifyListeners();
+
+    // CRITICAL: Yield to event loop to ensure UI rebuilds with 0 state
+    // This guarantees the next update (even if same number) is seen as a change.
+    await Future.delayed(const Duration(milliseconds: 100));
 
     // Interactive Roll Logic (KISS: Simple bias)
     int roll;
@@ -362,12 +431,18 @@ class GameController extends ChangeNotifier {
     }
 
     _diceRoll = roll;
-    _moveCurrentPlayer(_diceRoll);
-    notifyListeners();
+    notifyListeners(); // Show Dice Result (Animation stops rolling and shows number)
 
-    // Wait for animation to finish (approx matching UI duration)
-    // We could make this cleaner with callbacks, but for MVP delay is fine.
-    await Future.delayed(const Duration(milliseconds: 600));
+    // Give user time to see the dice result before moving (sync with DiceAnimation duration)
+    // DiceAnimation takes ~1s to show result then callback.
+    // We wait 1.5s here to be safe.
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    // Move Step-by-Step
+    await _moveCurrentPlayer(_diceRoll);
+
+    // Wait a tiny bit after last move before landing logic
+    await Future.delayed(const Duration(milliseconds: 200));
 
     _handleTileLanding(); // Updates local object state
 
@@ -380,7 +455,7 @@ class GameController extends ChangeNotifier {
     _nextTurn();
   }
 
-  void _moveCurrentPlayer(int steps) {
+  Future<void> _moveCurrentPlayer(int steps) async {
     // Graph Traversal Logic
     String currentId = currentPlayer.nodeId;
 
@@ -389,15 +464,29 @@ class GameController extends ChangeNotifier {
       if (node != null && node.nextNodeIds.isNotEmpty) {
         // Logic for forks would go here. For now, take first.
         currentId = node.nextNodeIds.first;
-      }
-    }
 
-    currentPlayer.nodeId = currentId;
-    // Sync legacy integer position for backward compatibility
-    try {
-      currentPlayer.position = int.parse(currentId.split('_').last);
-    } catch (e) {
-      currentPlayer.position = 0;
+        // UPDATE STATE STEP-BY-STEP
+        currentPlayer.nodeId = currentId;
+
+        // Sync legacy integer position for backward compatibility
+        try {
+          currentPlayer.position = int.parse(currentId.split('_').last);
+        } catch (e) {
+          currentPlayer.position = 0;
+        }
+
+        // Check for Passing Start (Salary)
+        if (currentPlayer.position == 0) {
+          // Assuming node_0 is start
+          currentPlayer.credits += 200; // Salary
+          _lastEffectMessage = "Passed Start! +200 Credits";
+        }
+
+        notifyListeners(); // Trigger UI Animation
+        await Future.delayed(
+          const Duration(milliseconds: 300),
+        ); // Wait for animation (Snappier)
+      }
     }
   }
 
@@ -405,6 +494,38 @@ class GameController extends ChangeNotifier {
     // TODO: Sync Turn Index to DB if we want strict turn enforcement.
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
     notifyListeners();
+
+    // AI Turn Logic
+    if (!_players[_currentPlayerIndex].isHuman) {
+      _processAiTurn();
+    }
+  }
+
+  Future<void> _processAiTurn() async {
+    // Simulate thinking time
+    await Future.delayed(const Duration(seconds: 2));
+
+    // AI Decision: Always roll for now (Strategy can be added later)
+    // Random gauge value for variety
+    double randomGauge = Random().nextDouble();
+    await rollDice(gaugeValue: randomGauge);
+
+    // AI Buying Logic could go here (e.g. call buyProperty if credits allow)
+    // For now, simple movement.
+    _attemptAiAction();
+  }
+
+  Future<void> _attemptAiAction() async {
+    // Simple AI: Buy if can afford
+    // Needs access to current tile after move.
+    // Since rollDice calls _handleTileLanding then _nextTurn,
+    // we need to inject action logic BEFORE _nextTurn in rollDice or
+    // handle it here if modify rollDice to NOT call _nextTurn automatically?
+    // Current rollDice calls _nextTurn.
+    // So AI buying must happen inside rollDice or _tileLanding?
+    // Or we modify rollDice to wait for AI action?
+
+    // KISS: For now, AI just moves. Smart AI can be Phase 18.
   }
 
   Future<bool> buyUpgrade() async {
@@ -503,6 +624,75 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  /// Takeover a property from another player (Hostile Takeover)
+  Future<void> buyPropertyTakeover(int tileId) async {
+    String nodeId = 'node_$tileId';
+
+    // Check Gatekeeper
+    final result = await _gatekeeper.isChildAgentActive(
+      _currentParentId,
+      _currentChildId,
+    );
+    if (!result.isSuccess) {
+      _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      notifyListeners();
+      return;
+    }
+
+    PropertyDetails? prop = _properties[nodeId];
+    if (prop == null || prop.ownerId == null) return;
+
+    if (prop.ownerId == currentPlayer.id) {
+      _lastEffectMessage = "You already own this!";
+      notifyListeners();
+      return;
+    }
+
+    if (prop.hasLandmark) {
+      _lastEffectMessage = "Cannot takeover a Landmark!";
+      notifyListeners();
+      return;
+    }
+
+    int cost = prop.takeoverCost;
+
+    if (currentPlayer.credits >= cost) {
+      // 1. Pay previous owner (Optional rule: 2x value goes to owner)
+      // For now, we deduct from current player and give half to previous owner?
+      // Or full 2x to previous owner? Let's give full 2x to previous owner for fairness.
+      Player? previousOwner = _players.cast<Player?>().firstWhere(
+        (p) => p?.id == prop.ownerId,
+        orElse: () => null,
+      );
+
+      currentPlayer.credits -= cost;
+      if (previousOwner != null) {
+        previousOwner.credits += cost;
+        // Sync previous owner too
+        await _supabase.upsertPlayer(previousOwner);
+      }
+
+      _lastEffectMessage = "Hostile Takeover Successful!";
+
+      // 2. Transfer Ownership
+      _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
+
+      notifyListeners();
+
+      // 3. Sync
+      await _supabase.upsertPlayer(currentPlayer);
+      await _supabase.upsertProperty(
+        tileId,
+        currentPlayer.id,
+        prop.buildingLevel,
+      );
+    } else {
+      _lastEffectMessage = "Need $cost Credits for Takeover!";
+      notifyListeners();
+      return;
+    }
+  }
+
   void _handleTileLanding() {
     String currentId = currentPlayer.nodeId;
     BoardNode? node = _boardGraph.getNode(currentId);
@@ -520,16 +710,17 @@ class GameController extends ChangeNotifier {
         _lastEffectMessage =
             "Passed Go! +${200 * multiplier} Score, +100 Credits";
         break;
-      case NodeType.minigame:
-        currentPlayer.score += (50 * multiplier);
-        currentPlayer.credits += 50;
-        _lastEffectMessage =
-            "Data Cache! +${50 * multiplier} Score, +50 Credits";
+      case NodeType.minigame: // Mapped to Reward
+        int reward = 200 * multiplier;
+        currentPlayer.credits += reward;
+        currentPlayer.score += 100 * multiplier;
+        _lastEffectMessage = "Dark Web Loot! +$reward Credits";
         break;
-      case NodeType.prison:
-        currentPlayer.score += (-50);
-        currentPlayer.credits = max(0, currentPlayer.credits - 50);
-        _lastEffectMessage = "Firewall Hit! -50 Score, -50 Credits";
+      case NodeType.prison: // Mapped to Penalty
+        int penalty = 150 * multiplier;
+        currentPlayer.credits = max(0, currentPlayer.credits - penalty);
+        currentPlayer.score = max(0, currentPlayer.score - 50);
+        _lastEffectMessage = "System Error! -$penalty Credits";
         break;
       case NodeType.event:
         _handleEventCardLanding();
@@ -615,6 +806,15 @@ class GameController extends ChangeNotifier {
         );
       }
     });
+
+    // Phase 17: Sync Rank Stats if Ranked Mode
+    if (gameMode == GameMode.ranked) {
+      for (final p in _players) {
+        if (p.isHuman) {
+          await _leaderboardService.updatePlayerStats(p);
+        }
+      }
+    }
 
     // 3. Save Global State
     await _supabase.saveGameState(_currentPlayerIndex);

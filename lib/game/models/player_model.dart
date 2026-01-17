@@ -23,7 +23,15 @@ class Player {
     this.gems = 0,
     this.scoreMultiplier = 1,
     this.isHuman = true,
+    this.rankPoints = 0,
+    this.wins = 0,
+    this.losses = 0,
   });
+
+  // Rank Stats
+  int rankPoints;
+  int wins;
+  int losses;
 
   Map<String, dynamic> toMap() {
     return {
@@ -38,6 +46,9 @@ class Player {
       'gems': gems,
       'score_multiplier': scoreMultiplier,
       'is_human': isHuman,
+      'rank_points': rankPoints,
+      'wins': wins,
+      'losses': losses,
     };
   }
 
@@ -56,6 +67,19 @@ class Player {
       gems: map['gems']?.toInt() ?? 0,
       scoreMultiplier: map['score_multiplier']?.toInt() ?? 1,
       isHuman: map['is_human'] ?? true,
+      rankPoints: map['rank_points']?.toInt() ?? 0,
+      wins: map['wins']?.toInt() ?? 0,
+      losses: map['losses']?.toInt() ?? 0,
     );
+  }
+
+  // Rank Title Getter (Cyberpunk Themed)
+  String get rankTitle {
+    if (rankPoints < 100) return 'Script Kiddie';
+    if (rankPoints < 300) return 'Hacker';
+    if (rankPoints < 600) return 'Netrunner';
+    if (rankPoints < 1000) return 'Cypher';
+    if (rankPoints < 1500) return 'Elite Phantom';
+    return 'Cyber Lord';
   }
 }

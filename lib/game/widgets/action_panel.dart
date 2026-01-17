@@ -1,16 +1,20 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dice_gauge.dart';
+import 'dice_charge_widget.dart';
 
-/// Action panel with gatekeeper-aware buttons
+/// Action panel with Glassmorphism and Takeover logic
 class ActionPanel extends StatelessWidget {
   final bool isMyTurn;
   final bool isAgentActive;
   final bool canBuyProperty;
   final bool canUpgradeProperty;
-  final Function(double) onRollDice; // Updated signature
+  final bool canTakeoverProperty;
+  final Function(double) onRollDice;
   final VoidCallback onBuyProperty;
   final VoidCallback onUpgradeProperty;
+  final VoidCallback onTakeoverProperty;
   final VoidCallback onSaveGame;
   final VoidCallback onLoadGame;
   final bool isLoading;
@@ -21,9 +25,11 @@ class ActionPanel extends StatelessWidget {
     required this.isAgentActive,
     required this.canBuyProperty,
     required this.canUpgradeProperty,
-    required this.onRollDice, // expects Function(double)
+    this.canTakeoverProperty = false,
+    required this.onRollDice,
     required this.onBuyProperty,
     required this.onUpgradeProperty,
+    required this.onTakeoverProperty,
     required this.onSaveGame,
     required this.onLoadGame,
     this.isLoading = false,
@@ -34,30 +40,26 @@ class ActionPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
+        color: Colors.black.withOpacity(0.85),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.cyanAccent.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.cyanAccent.withOpacity(0.3), width: 1),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(0, 4), blurRadius: 0),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // DICE GAUGE REPLACEMENT
+          // DICE ACTION
           if (isMyTurn && isAgentActive && !isLoading)
-            DiceGauge(
-              key: const Key('gauge_roll'),
-              onRelease: onRollDice,
-              enabled: true,
-            )
+            HoldToRollButton(key: const Key('gauge_roll'), onRoll: onRollDice)
           else
             _buildActionButton(
               key: const Key('btn_roll_disabled'),
               label: 'ROLL DICE',
               icon: Icons.casino,
               enabled: false,
-              onPressed: () {}, // Dummy
+              onPressed: () {},
               color: Colors.grey,
               disabledReason: !isAgentActive
                   ? 'Agent Offline'
@@ -66,33 +68,48 @@ class ActionPanel extends StatelessWidget {
                   : null,
             ),
           const SizedBox(height: 12),
-          _buildActionButton(
-            key: const Key('btn_buy'),
-            label: 'BUY PROPERTY',
-            icon: Icons.store,
-            enabled: canBuyProperty && isAgentActive && !isLoading,
-            onPressed: onBuyProperty,
-            color: Colors.greenAccent,
-            disabledReason: !isAgentActive
-                ? 'Agent Offline'
-                : !canBuyProperty
-                ? 'Not Available'
-                : null,
-          ),
-          const SizedBox(height: 12),
-          _buildActionButton(
-            key: const Key('btn_upgrade'),
-            label: 'UPGRADE',
-            icon: Icons.upgrade,
-            enabled: canUpgradeProperty && isAgentActive && !isLoading,
-            onPressed: onUpgradeProperty,
-            color: Colors.purpleAccent,
-            disabledReason: !isAgentActive
-                ? 'Agent Offline'
-                : !canUpgradeProperty
-                ? 'Not Your Property'
-                : null,
-          ),
+
+          // CONTEXTUAL ACTIONS
+          if (canTakeoverProperty)
+            _buildActionButton(
+              key: const Key('btn_takeover'),
+              label: 'TAKEOVER (2x)',
+              icon: Icons.monetization_on,
+              enabled: isAgentActive && !isLoading,
+              onPressed: onTakeoverProperty,
+              color: Colors.redAccent,
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    key: const Key('btn_buy'),
+                    label: 'BUY',
+                    icon: Icons.store,
+                    enabled: canBuyProperty && isAgentActive && !isLoading,
+                    onPressed: onBuyProperty,
+                    color: Colors.greenAccent,
+                    disabledReason: !canBuyProperty ? 'No Sale' : null,
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    key: const Key('btn_upgrade'),
+                    label: 'UPGRADE',
+                    icon: Icons.upgrade,
+                    enabled: canUpgradeProperty && isAgentActive && !isLoading,
+                    onPressed: onUpgradeProperty,
+                    color: Colors.purpleAccent,
+                    disabledReason: !canUpgradeProperty ? 'No Access' : null,
+                    compact: true,
+                  ),
+                ),
+              ],
+            ),
+
           const Divider(color: Colors.cyanAccent, height: 24),
           Row(
             children: [
@@ -160,6 +177,100 @@ class ActionPanel extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           elevation: enabled ? 8 : 0,
+        ),
+      ),
+    );
+  }
+}
+
+class HoldToRollButton extends StatefulWidget {
+  final Function(double) onRoll;
+
+  const HoldToRollButton({Key? key, required this.onRoll}) : super(key: key);
+
+  @override
+  State<HoldToRollButton> createState() => _HoldToRollButtonState();
+}
+
+class _HoldToRollButtonState extends State<HoldToRollButton> {
+  Timer? _timer;
+  double _charge = 0.0;
+  bool _isHolding = false;
+
+  void _startHolding() {
+    setState(() {
+      _isHolding = true;
+      _charge = 0.0;
+    });
+
+    _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      setState(() {
+        // Charge fills in 2.0 seconds
+        _charge += 0.016 / 2.0;
+        if (_charge >= 1.0) {
+          _charge = 1.0;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  void _release() {
+    _timer?.cancel();
+    if (_isHolding) {
+      widget.onRoll(_charge);
+      setState(() {
+        _isHolding = false;
+        _charge = 0.0;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _startHolding(),
+      onTapUp: (_) => _release(),
+      onTapCancel: () => _release(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: _isHolding ? Colors.grey.shade900 : Colors.cyanAccent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHolding ? Colors.cyanAccent : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            if (!_isHolding)
+              BoxShadow(
+                color: Colors.cyanAccent.withOpacity(0.5),
+                blurRadius: 10,
+              ),
+          ],
+        ),
+        child: Column(
+          children: [
+            if (_isHolding)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: DiceChargeWidget(chargeValue: _charge),
+              ),
+
+            Center(
+              child: Text(
+                _isHolding ? "CHARGING..." : "HOLD TO ROLL",
+                style: GoogleFonts.orbitron(
+                  color: _isHolding ? Colors.cyanAccent : Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
