@@ -35,7 +35,6 @@ class Player {
       'node_id': nodeId,
       'score': score,
       'credits': credits,
-      'gems': gems,
       'score_multiplier': scoreMultiplier,
       'is_human': isHuman,
     };
