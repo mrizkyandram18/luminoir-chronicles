@@ -56,7 +56,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
   }
 
-  void _startSinglePlayer() {
+  void _startLocalGame(GameMode mode) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ChangeNotifierProvider(
@@ -64,6 +64,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             context.read<GatekeeperService>(),
             parentId: widget.parentId,
             childId: widget.childId,
+            gameMode: mode,
           ),
           child: const GameBoardScreenEnhanced(),
         ),
@@ -213,16 +214,36 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: _startSinglePlayer,
+                  onPressed: () => _startLocalGame(GameMode.practice),
                   child: Text(
-                    'SINGLE PLAYER',
+                    'PRACTICE',
                     style: GoogleFonts.orbitron(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.1),
+                    foregroundColor: Colors.orangeAccent,
+                    side: const BorderSide(color: Colors.orangeAccent),
+                    minimumSize: const Size(250, 60),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () => _startLocalGame(GameMode.ranked),
+                  child: Text(
+                    'RANKED',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFF6B6B),
@@ -234,7 +255,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
                   onPressed: _goToMultiplayer,
                   child: Text(
-                    'MULTIPLAYER',
+                    'ONLINE',
                     style: GoogleFonts.orbitron(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

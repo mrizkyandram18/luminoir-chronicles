@@ -14,7 +14,7 @@ import 'services/multiplayer_service.dart';
 import 'services/leaderboard_service.dart';
 import 'models/match_result.dart';
 
-enum GameMode { practice, ranked }
+enum GameMode { practice, ranked, online }
 
 class GameController extends ChangeNotifier {
   // Players (Synced from Stream)
@@ -74,6 +74,7 @@ class GameController extends ChangeNotifier {
     this._gatekeeper, {
     required String parentId,
     required String childId,
+    GameMode? gameMode,
     SupabaseService? supabaseService, // Optional injection for testing
     MultiplayerService? multiplayerService, // Optional injection for testing
     LeaderboardService? leaderboardService, // Optional injection for testing
@@ -82,6 +83,8 @@ class GameController extends ChangeNotifier {
     this.myChildId,
   }) : _currentParentId = parentId,
        _currentChildId = childId,
+       gameMode =
+           gameMode ?? (isMultiplayer ? GameMode.online : GameMode.practice),
        _supabase = supabaseService ?? SupabaseService() {
     _leaderboardService = leaderboardService ?? LeaderboardService(_supabase);
 
@@ -91,7 +94,8 @@ class GameController extends ChangeNotifier {
     // Initialize default players
     if (isMultiplayer) {
       _multiplayerService = multiplayerService ?? MultiplayerService();
-      gameMode = GameMode.ranked; // Multiplayer is always ranked by default
+      // gameMode is already set in initializer, but ensure online for multiplayer
+      gameMode = GameMode.online;
     }
 
     _generateEventDeck();
@@ -474,8 +478,10 @@ class GameController extends ChangeNotifier {
 
     _handleTileLanding(); // Updates local object state
 
-    // SYNC TO SUPABASE
-    await _supabase.upsertPlayer(currentPlayer);
+    // SYNC TO SUPABASE (Only if not practice)
+    if (gameMode != GameMode.practice) {
+      await _supabase.upsertPlayer(currentPlayer);
+    }
     if (_isDisposed || _matchEnded) return;
 
     // Autosave (non-match progress only)
@@ -598,8 +604,10 @@ class GameController extends ChangeNotifier {
       notifyListeners();
 
       // Sync Player (Credits) and Property (Owner)
-      await _supabase.upsertPlayer(currentPlayer);
-      await _supabase.upsertProperty(tileId, currentPlayer.id, 0);
+      if (gameMode != GameMode.practice) {
+        await _supabase.upsertPlayer(currentPlayer);
+        await _supabase.upsertProperty(tileId, currentPlayer.id, 0);
+      }
     } else {
       _lastEffectMessage = "Insufficient Credits to buy!";
       notifyListeners();
@@ -651,8 +659,10 @@ class GameController extends ChangeNotifier {
       _lastEffectMessage = "Upgraded to Lv $newLevel!";
       notifyListeners();
 
-      await _supabase.upsertPlayer(currentPlayer);
-      await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
+      if (gameMode != GameMode.practice) {
+        await _supabase.upsertPlayer(currentPlayer);
+        await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
+      }
     } else {
       _lastEffectMessage = "Need $cost Credits to upgrade!";
       notifyListeners();
@@ -715,12 +725,14 @@ class GameController extends ChangeNotifier {
       notifyListeners();
 
       // 3. Sync
-      await _supabase.upsertPlayer(currentPlayer);
-      await _supabase.upsertProperty(
-        tileId,
-        currentPlayer.id,
-        prop.buildingLevel,
-      );
+      if (gameMode != GameMode.practice) {
+        await _supabase.upsertPlayer(currentPlayer);
+        await _supabase.upsertProperty(
+          tileId,
+          currentPlayer.id,
+          prop.buildingLevel,
+        );
+      }
     } else {
       _lastEffectMessage = "Need $cost Credits for Takeover!";
       notifyListeners();
@@ -815,12 +827,16 @@ class GameController extends ChangeNotifier {
   /// Autosave: Only saves non-match progress (rank, stats)
   /// Does NOT save match state to prevent save/load exploits
   Future<void> autosave() async {
-    if (_matchEnded) return;
+    if (_matchEnded || gameMode == GameMode.practice) return;
 
     try {
       for (final p in _players) {
         if (p.isHuman) {
-          await _supabase.upsertPlayer(p);
+          if (gameMode == GameMode.ranked || gameMode == GameMode.online) {
+            await _leaderboardService.updatePlayerStats(p);
+          } else {
+            await _supabase.upsertPlayer(p);
+          }
         }
       }
     } catch (e) {
@@ -830,6 +846,12 @@ class GameController extends ChangeNotifier {
 
   /// Save the current game state manually (only for in-progress matches)
   Future<void> saveGame() async {
+    if (gameMode != GameMode.practice) {
+      _lastEffectMessage = "Manual save only allowed in Practice mode";
+      notifyListeners();
+      return;
+    }
+
     if (_matchEnded) {
       _lastEffectMessage = "Cannot save: Match already ended";
       notifyListeners();
@@ -873,6 +895,12 @@ class GameController extends ChangeNotifier {
 
   /// Load the game state manually (only for in-progress matches)
   Future<void> loadGame() async {
+    if (gameMode != GameMode.practice) {
+      _lastEffectMessage = "Manual load only allowed in Practice mode";
+      notifyListeners();
+      return;
+    }
+
     if (_matchEnded) {
       _lastEffectMessage = "Cannot load: Match already ended";
       notifyListeners();

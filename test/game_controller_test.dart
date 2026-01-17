@@ -138,7 +138,7 @@ void main() {
     expect(leaderboard.updateCallCount, 0);
   });
 
-  test('Ranked Mode syncs stats on Save', () async {
+  test('Ranked Mode syncs stats on Autosave', () async {
     controller = GameController(
       gatekeeper,
       parentId: 'parent',
@@ -146,15 +146,15 @@ void main() {
       supabaseService: supabase,
       leaderboardService: leaderboard,
       multiplayerService: multiplayer,
-      isMultiplayer: true,
+      gameMode: GameMode.ranked,
     );
 
     expect(controller.gameMode, GameMode.ranked);
 
-    // Trigger Save
-    await controller.saveGame();
+    // Trigger Autosave
+    await controller.autosave();
 
-    // In Ranked mode, saves should sync stats for human players
+    // In Ranked mode, autosaves should sync stats for human players
     expect(leaderboard.updateCallCount, greaterThan(0));
   });
 
@@ -186,7 +186,7 @@ void main() {
       supabaseService: supabase,
       leaderboardService: leaderboard,
       multiplayerService: multiplayer,
-      isMultiplayer: true,
+      gameMode: GameMode.ranked,
     );
 
     expect(controller.gameMode, GameMode.ranked);

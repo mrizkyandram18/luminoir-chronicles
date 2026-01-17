@@ -77,7 +77,7 @@ class CyberTycoonApp extends StatelessWidget {
 }
 
 final _router = GoRouter(
-  initialLocation: '/setup',
+  initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     GoRoute(

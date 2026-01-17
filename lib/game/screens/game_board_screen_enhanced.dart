@@ -115,6 +115,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                             _handleTakeoverProperty(context, ctrl),
                         onSaveGame: () => _handleSaveGame(context, ctrl),
                         onLoadGame: () => _handleLoadGame(context, ctrl),
+                        showSaveLoad: ctrl.gameMode == GameMode.practice,
                       ),
                     ),
                   ),

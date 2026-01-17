@@ -16,6 +16,7 @@ class ActionPanel extends StatelessWidget {
   final VoidCallback onTakeoverProperty;
   final VoidCallback onSaveGame;
   final VoidCallback onLoadGame;
+  final bool showSaveLoad;
   final bool isLoading;
 
   const ActionPanel({
@@ -31,6 +32,7 @@ class ActionPanel extends StatelessWidget {
     required this.onTakeoverProperty,
     required this.onSaveGame,
     required this.onLoadGame,
+    this.showSaveLoad = true,
     this.isLoading = false,
   });
 
@@ -112,34 +114,36 @@ class ActionPanel extends StatelessWidget {
               ],
             ),
 
-          const Divider(color: Colors.cyanAccent, height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  key: const Key('btn_save'),
-                  label: 'SAVE',
-                  icon: Icons.save,
-                  enabled: isAgentActive && !isLoading,
-                  onPressed: onSaveGame,
-                  color: Colors.orangeAccent,
-                  compact: true,
+          if (showSaveLoad) ...[
+            const Divider(color: Colors.cyanAccent, height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    key: const Key('btn_save'),
+                    label: 'SAVE',
+                    icon: Icons.save,
+                    enabled: isAgentActive && !isLoading,
+                    onPressed: onSaveGame,
+                    color: Colors.orangeAccent,
+                    compact: true,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionButton(
-                  key: const Key('btn_load'),
-                  label: 'LOAD',
-                  icon: Icons.folder_open,
-                  enabled: isAgentActive && !isLoading,
-                  onPressed: onLoadGame,
-                  color: Colors.orangeAccent,
-                  compact: true,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    key: const Key('btn_load'),
+                    label: 'LOAD',
+                    icon: Icons.folder_open,
+                    enabled: isAgentActive && !isLoading,
+                    onPressed: onLoadGame,
+                    color: Colors.orangeAccent,
+                    compact: true,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
