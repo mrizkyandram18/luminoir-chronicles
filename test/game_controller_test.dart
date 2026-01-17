@@ -103,6 +103,13 @@ class MockMultiplayerService extends Fake implements MultiplayerService {
   Stream<List<RoomPlayer>> getPlayersStream(String roomId) => Stream.value([]);
 }
 
+class GatekeeperConnectivityFake extends GatekeeperService {
+  bool connected = true;
+
+  @override
+  bool get isGatekeeperConnected => connected;
+}
+
 void main() {
   late GameController controller;
   late MockGatekeeper gatekeeper;
@@ -199,6 +206,25 @@ void main() {
     controller.endTurn();
 
     expect(leaderboard.updateCallCount, greaterThan(initialCalls));
+  });
+
+  test('isAgentActive mirrors Gatekeeper connectivity status', () async {
+    final gatekeeperFake = GatekeeperConnectivityFake();
+    gatekeeperFake.connected = true;
+
+    controller = GameController(
+      gatekeeperFake,
+      parentId: 'parent',
+      childId: 'child',
+      supabaseService: supabase,
+      leaderboardService: leaderboard,
+      multiplayerService: multiplayer,
+    );
+
+    expect(controller.isAgentActive, isTrue);
+
+    gatekeeperFake.connected = false;
+    expect(controller.isAgentActive, isFalse);
   });
 
   test('Practice mode does NOT update rank on game end', () async {

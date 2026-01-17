@@ -13,11 +13,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              canEndTurn: false,
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -45,11 +45,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: false, // Not player's turn
               isAgentActive: true,
+              canRoll: false,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              canEndTurn: false,
+              rollDisabledReason: 'Not Your Turn',
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -67,6 +68,14 @@ void main() {
         find.byKey(const Key('btn_roll_disabled')),
       );
       expect(rollButton.onPressed, isNull);
+
+      final rollTooltip = tester.widget<Tooltip>(
+        find.ancestor(
+          of: find.byKey(const Key('btn_roll_disabled')),
+          matching: find.byType(Tooltip),
+        ),
+      );
+      expect(rollTooltip.message, 'Not Your Turn');
     });
 
     testWidgets('should disable all actions when agent offline', (
@@ -76,11 +85,14 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: false, // Agent offline
-              canBuyProperty: true,
-              canUpgradeProperty: true,
+              canRoll: false,
               canEndTurn: false,
+              canBuyProperty: false,
+              canUpgradeProperty: false,
+              rollDisabledReason: 'Agent Offline',
+              buyDisabledReason: 'Agent Offline',
+              upgradeDisabledReason: 'Agent Offline',
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -108,6 +120,40 @@ void main() {
       expect(upgradeButton.onPressed, isNull);
     });
 
+    testWidgets('should show tooltip reason when buy disabled', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ActionPanel(
+              isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
+              canBuyProperty: false,
+              canUpgradeProperty: false,
+              buyDisabledReason: 'No Sale',
+              onRollDice: (val) {},
+              onBuyProperty: () {},
+              onUpgradeProperty: () {},
+              onTakeoverProperty: () {},
+              onEndTurn: () {},
+              onSaveGame: () {},
+              onLoadGame: () {},
+            ),
+          ),
+        ),
+      );
+
+      final buyTooltip = tester.widget<Tooltip>(
+        find.ancestor(
+          of: find.byKey(const Key('btn_buy')),
+          matching: find.byType(Tooltip),
+        ),
+      );
+      expect(buyTooltip.message, 'No Sale');
+    });
+
     testWidgets('should enable buy button when on unowned property', (
       WidgetTester tester,
     ) async {
@@ -115,11 +161,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: true, // Can buy
               canUpgradeProperty: false,
-              canEndTurn: false,
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -146,11 +192,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: true, // Can upgrade
-              canEndTurn: false,
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -177,12 +223,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: false,
               canTakeoverProperty: true, // Enable Takeover
-              canEndTurn: false,
               onRollDice: (val) {},
               onBuyProperty: () {},
               onUpgradeProperty: () {},
@@ -207,11 +253,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              canEndTurn: false,
               isLoading: true, // Loading state
               onRollDice: (val) {},
               onBuyProperty: () {},
@@ -243,11 +289,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ActionPanel(
-              isMyTurn: true,
               isAgentActive: true,
+              canRoll: true,
+              canEndTurn: false,
               canBuyProperty: false,
               canUpgradeProperty: false,
-              canEndTurn: false,
               onRollDice: (val) => rollDiceCalled = true,
               onBuyProperty: () {},
               onUpgradeProperty: () {},

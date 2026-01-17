@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../game_controller.dart';
-import '../models/tile_model.dart';
-import '../models/player_model.dart'; // Added missing import
-
+import '../models/player_model.dart';
 import '../widgets/hud_overlay.dart';
 import '../widgets/action_panel.dart';
 import '../animations/effects_manager.dart';
 import '../widgets/isometric/isometric_board.dart';
-import '../animations/dice_animation.dart'; // Added import for DiceAnimation
+import '../animations/dice_animation.dart';
+import '../../gatekeeper/gatekeeper_service.dart';
 import 'leaderboard_screen.dart';
 
-/// Enhanced Game Board Screen with integrated HUD and Action Panel
 class GameBoardScreenEnhanced extends StatefulWidget {
-  // Changed to StatefulWidget
   const GameBoardScreenEnhanced({super.key});
 
   @override
@@ -22,225 +20,323 @@ class GameBoardScreenEnhanced extends StatefulWidget {
       _GameBoardScreenEnhancedState();
 }
 
-class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
-  // Added State class
-  // State
+class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
+    with WidgetsBindingObserver {
   bool _isRolling = false;
+  bool _isAppActive = true;
+  bool _isBackgrounded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) {
+      return;
+    }
+    final controller = context.read<GameController>();
+    if (state == AppLifecycleState.resumed) {
+      final gatekeeper = context.read<GatekeeperService>();
+      if (!gatekeeper.isGatekeeperConnected) {
+        context.go('/access-denied', extra: 'OFFLINE');
+        return;
+      }
+      _isBackgrounded = false;
+      setState(() {
+        _isAppActive = true;
+      });
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      if (_isBackgrounded) {
+        return;
+      }
+      _isBackgrounded = true;
+      setState(() {
+        _isAppActive = false;
+        _isRolling = false;
+      });
+      if (controller.gameMode.canPersist) {
+        controller.autosave();
+      }
+      return;
+    }
+    if (state == AppLifecycleState.detached) {
+      _isBackgrounded = true;
+      if (controller.gameMode.canPersist) {
+        controller.autosave();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // OPTIMIZATION: Use read() here. We DO NOT want the entire Scaffold to rebuild on every tick.
+    final gatekeeper = context.watch<GatekeeperService>();
+    if (!gatekeeper.isGatekeeperConnected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        context.go('/access-denied', extra: 'OFFLINE');
+      });
+    }
     final controller = context.read<GameController>();
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [Color(0xFF1a237e), Colors.black],
-            center: Alignment.center,
-            radius: 1.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, dynamic result) async {
+        if (didPop) {
+          return;
+        }
+        final navigator = Navigator.of(context);
+        final phase = controller.phase;
+        final isSafeToExit =
+            controller.matchEnded || phase == GamePhase.waiting;
+        if (isSafeToExit) {
+          navigator.maybePop();
+          return;
+        }
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) {
+            return AlertDialog(
+              backgroundColor: Colors.black,
+              title: Text(
+                "Exit Game?",
+                style: GoogleFonts.orbitron(color: Colors.white),
+              ),
+              content: Text(
+                "Your current turn will be lost. Are you sure?",
+                style: GoogleFonts.robotoMono(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text("CANCEL"),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text("EXIT"),
+                ),
+              ],
+            );
+          },
+        );
+        if (shouldExit == true) {
+          navigator.maybePop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              colors: [Color(0xFF1a237e), Colors.black],
+              center: Alignment.center,
+              radius: 1.5,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Main Game Board
-              Column(
-                children: [
-                  // Top Bar - Turn Indicator (Wrapped in Selector)
-                  Selector<GameController, Player>(
-                    selector: (_, ctrl) => ctrl.currentPlayer,
-                    builder: (_, player, _) => _buildTurnIndicator(controller),
-                  ),
-
-                  // The Board (Already handles its own Selector internally)
-                  Expanded(child: _buildBoard(context, controller)),
-                ],
-              ),
-
-              // HUD Overlay (Top Right) -> Needs updates on credits/turn
-              Positioned(
-                top: 60,
-                right: 16,
-                child: Consumer<GameController>(
-                  builder: (_, ctrl, _) => HudOverlay(
-                    players: ctrl.players,
-                    currentPlayerIndex: ctrl.currentPlayerIndex,
-                    isOnline: true,
-                  ),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    Selector<GameController, Player>(
+                      selector: (_, ctrl) => ctrl.currentPlayer,
+                      builder: (_, player, _) =>
+                          _buildTurnIndicator(controller),
+                    ),
+                    Expanded(
+                      child: _buildBoard(context, controller),
+                    ),
+                  ],
                 ),
-              ),
-
-              // Leaderboard Button (Below HUD)
-              Positioned(
-                top: 180,
-                right: 16,
-                child: FloatingActionButton.small(
-                  backgroundColor: Colors.black.withValues(alpha: 0.8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Colors.cyanAccent),
-                  ),
-                  onPressed: () => _showLeaderboard(context, controller),
-                  child: const Icon(
-                    Icons.leaderboard,
-                    color: Colors.cyanAccent,
-                  ),
-                ),
-              ),
-
-              // Action Panel (Bottom Center) -> Critical for State
-              Positioned(
-                bottom: 16,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: SizedBox(
-                    width: 400,
-                    child: Consumer<GameController>(
-                      builder: (_, ctrl, _) {
-                        final currentTile =
-                            ctrl.tiles[ctrl.currentPlayer.position];
-                        return ActionPanel(
-                          isMyTurn: ctrl.isMyTurn,
-                          isAgentActive: true,
-                          canEndTurn: ctrl.canEndTurn,
-                          canBuyProperty:
-                              currentTile.type == TileType.property &&
-                              currentTile.ownerId == null &&
-                              ctrl.currentPlayer.credits >= currentTile.value &&
-                              !ctrl.actionTakenThisTurn,
-                          canUpgradeProperty:
-                              currentTile.type == TileType.property &&
-                              currentTile.ownerId == ctrl.currentPlayer.id &&
-                              ctrl.currentPlayer.credits >=
-                                  (currentTile.value * 0.5).round() &&
-                              currentTile.upgradeLevel < 4 &&
-                              !ctrl.actionTakenThisTurn,
-                          canTakeoverProperty:
-                              currentTile.type == TileType.property &&
-                              currentTile.ownerId != null &&
-                              currentTile.ownerId != ctrl.currentPlayer.id &&
-                              ctrl.currentPlayer.credits >=
-                                  (currentTile.value * 2) &&
-                              currentTile.upgradeLevel < 4 &&
-                              !ctrl.actionTakenThisTurn,
-                          isLoading: _isRolling,
-                          onRollDice: (gauge) async {
-                            setState(() => _isRolling = true);
-                            await ctrl.rollDice(gaugeValue: gauge);
-                            if (context.mounted &&
-                                ctrl.currentEventCard != null) {
-                              _showEventCardDialog(context, ctrl);
-                            }
-                            if (context.mounted &&
-                                ctrl.lastEffectMessage != null) {
-                              _showSnackBar(
-                                context,
-                                ctrl.lastEffectMessage!,
-                                ctrl.currentPlayer.color,
-                              );
-                            }
-                            if (mounted) setState(() => _isRolling = false);
-                          },
-                          onBuyProperty: () async {
-                            await ctrl.buyProperty(ctrl.currentPlayer.position);
-                            if (context.mounted &&
-                                ctrl.lastEffectMessage != null) {
-                              _showSnackBar(
-                                context,
-                                ctrl.lastEffectMessage!,
-                                Colors.greenAccent,
-                              );
-                            }
-                          },
-                          onUpgradeProperty: () async {
-                            await ctrl.buyPropertyUpgrade(
-                              ctrl.currentPlayer.position,
-                            );
-                            if (context.mounted &&
-                                ctrl.lastEffectMessage != null) {
-                              _showSnackBar(
-                                context,
-                                ctrl.lastEffectMessage!,
-                                Colors.blueAccent,
-                              );
-                            }
-                          },
-                          onTakeoverProperty: () async {
-                            await ctrl.buyPropertyTakeover(
-                              ctrl.currentPlayer.position,
-                            );
-                            if (context.mounted &&
-                                ctrl.lastEffectMessage != null) {
-                              _showSnackBar(
-                                context,
-                                ctrl.lastEffectMessage!,
-                                Colors.redAccent,
-                              );
-                            }
-                          },
-                          onEndTurn: () => ctrl.endTurn(),
-                          onSaveGame: () => ctrl.saveGame(),
-                          onLoadGame: () => ctrl.loadGame(),
-                          showSaveLoad: ctrl.gameMode == GameMode.practice,
-                        );
-                      },
+                Positioned(
+                  top: 60,
+                  right: 16,
+                  child: Consumer<GameController>(
+                    builder: (_, ctrl, _) => HudOverlay(
+                      players: ctrl.players,
+                      currentPlayerIndex: ctrl.currentPlayerIndex,
+                      isOnline: true,
                     ),
                   ),
                 ),
-              ),
-
-              // Floating Effects Layer
-              // Uses Selector to only rebuild when message changes
-              Selector<GameController, String?>(
-                selector: (_, ctrl) => ctrl.lastEffectMessage,
-                builder: (_, msg, _) {
-                  if (msg == null) return const SizedBox.shrink();
-                  // We need the color too, but let's grab it from controller since it's cheap
-                  return Positioned(
-                    top: 120,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: EffectsManager.floatingScore(
-                        context: context,
-                        text: msg,
-                        color: controller.currentPlayer.color,
+                Positioned(
+                  top: 180,
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    backgroundColor: Colors.black.withValues(alpha: 0.8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: const BorderSide(color: Colors.cyanAccent),
+                    ),
+                    onPressed: () => _showLeaderboard(context, controller),
+                    child: const Icon(
+                      Icons.leaderboard,
+                      color: Colors.cyanAccent,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: SizedBox(
+                      width: 400,
+                      child: Consumer<GameController>(
+                        builder: (_, ctrl, _) {
+                          final isPanelBusy =
+                              _isRolling || !_isAppActive || ctrl.isMoving;
+                          return ActionPanel(
+                            isAgentActive: ctrl.isAgentActive,
+                            canRoll: ctrl.canRoll,
+                            canEndTurn: ctrl.canEndTurn,
+                            canBuyProperty: ctrl.canBuyProperty,
+                            canUpgradeProperty: ctrl.canUpgradeProperty,
+                            canTakeoverProperty: ctrl.canTakeoverProperty,
+                            rollDisabledReason: ctrl.rollDisabledReason,
+                            buyDisabledReason: ctrl.buyPropertyDisabledReason,
+                            upgradeDisabledReason:
+                                ctrl.upgradePropertyDisabledReason,
+                            takeoverDisabledReason:
+                                ctrl.takeoverPropertyDisabledReason,
+                            isLoading: isPanelBusy,
+                            onRollDice: (gauge) async {
+                              if (!_isAppActive || _isRolling) {
+                                return;
+                              }
+                              setState(() {
+                                _isRolling = true;
+                              });
+                              await ctrl.rollDice(gaugeValue: gauge);
+                              if (context.mounted &&
+                                  ctrl.currentEventCard != null) {
+                                _showEventCardDialog(context, ctrl);
+                              }
+                              if (context.mounted &&
+                                  ctrl.lastEffectMessage != null) {
+                                _showSnackBar(
+                                  context,
+                                  ctrl.lastEffectMessage!,
+                                  ctrl.currentPlayer.color,
+                                );
+                              }
+                              if (mounted) {
+                                setState(() {
+                                  _isRolling = false;
+                                });
+                              }
+                            },
+                            onBuyProperty: () async {
+                              await ctrl
+                                  .buyProperty(ctrl.currentPlayer.position);
+                              if (context.mounted &&
+                                  ctrl.lastEffectMessage != null) {
+                                _showSnackBar(
+                                  context,
+                                  ctrl.lastEffectMessage!,
+                                  Colors.greenAccent,
+                                );
+                              }
+                            },
+                            onUpgradeProperty: () async {
+                              await ctrl.buyPropertyUpgrade(
+                                ctrl.currentPlayer.position,
+                              );
+                              if (context.mounted &&
+                                  ctrl.lastEffectMessage != null) {
+                                _showSnackBar(
+                                  context,
+                                  ctrl.lastEffectMessage!,
+                                  Colors.blueAccent,
+                                );
+                              }
+                            },
+                            onTakeoverProperty: () async {
+                              await ctrl.buyPropertyTakeover(
+                                ctrl.currentPlayer.position,
+                              );
+                              if (context.mounted &&
+                                  ctrl.lastEffectMessage != null) {
+                                _showSnackBar(
+                                  context,
+                                  ctrl.lastEffectMessage!,
+                                  Colors.redAccent,
+                                );
+                              }
+                            },
+                            onEndTurn: () => ctrl.endTurn(),
+                            onSaveGame: () => ctrl.saveGame(),
+                            onLoadGame: () => ctrl.loadGame(),
+                            showSaveLoad: ctrl.gameMode == GameMode.practice,
+                          );
+                        },
                       ),
                     ),
-                  );
-                },
-              ),
-
-              // DICE ANIMATION
-              // Local state _isRolling + Controller.diceRoll
-              Consumer<GameController>(
-                builder: (_, ctrl, _) {
-                  if (!_isRolling && ctrl.diceRoll <= 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return Positioned(
-                    bottom: 160,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Transform.scale(
-                        scale: 0.6,
-                        child: DiceAnimation(
-                          isRolling: _isRolling,
-                          diceResult: ctrl.diceRoll > 0 ? ctrl.diceRoll : null,
-                          onRollComplete: () {
-                            if (mounted) setState(() => _isRolling = false);
-                          },
+                  ),
+                ),
+                Selector<GameController, String?>(
+                  selector: (_, ctrl) => ctrl.lastEffectMessage,
+                  builder: (_, msg, _) {
+                    if (msg == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return Positioned(
+                      top: 120,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: EffectsManager.floatingScore(
+                          context: context,
+                          text: msg,
+                          color: controller.currentPlayer.color,
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                    );
+                  },
+                ),
+                Consumer<GameController>(
+                  builder: (_, ctrl, _) {
+                    if (!_isRolling && ctrl.diceRoll <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Positioned(
+                      bottom: 160,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: Transform.scale(
+                          scale: 0.6,
+                          child: DiceAnimation(
+                            isRolling: _isRolling,
+                            diceResult:
+                                ctrl.diceRoll > 0 ? ctrl.diceRoll : null,
+                            onRollComplete: () {
+                              if (mounted) {
+                                setState(() {
+                                  _isRolling = false;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

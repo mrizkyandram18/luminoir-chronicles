@@ -5,12 +5,16 @@ import 'dice_charge_widget.dart';
 
 /// Action panel with Glassmorphism and Takeover logic
 class ActionPanel extends StatelessWidget {
-  final bool isMyTurn;
   final bool isAgentActive;
+  final bool canRoll;
+  final bool canEndTurn;
   final bool canBuyProperty;
   final bool canUpgradeProperty;
   final bool canTakeoverProperty;
-  final bool canEndTurn;
+  final String? rollDisabledReason;
+  final String? buyDisabledReason;
+  final String? upgradeDisabledReason;
+  final String? takeoverDisabledReason;
   final Function(double) onRollDice;
   final VoidCallback onBuyProperty;
   final VoidCallback onUpgradeProperty;
@@ -23,12 +27,16 @@ class ActionPanel extends StatelessWidget {
 
   const ActionPanel({
     super.key,
-    required this.isMyTurn,
     required this.isAgentActive,
+    required this.canRoll,
+    required this.canEndTurn,
     required this.canBuyProperty,
     required this.canUpgradeProperty,
     this.canTakeoverProperty = false,
-    required this.canEndTurn,
+    this.rollDisabledReason,
+    this.buyDisabledReason,
+    this.upgradeDisabledReason,
+    this.takeoverDisabledReason,
     required this.onRollDice,
     required this.onBuyProperty,
     required this.onUpgradeProperty,
@@ -59,7 +67,7 @@ class ActionPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // DICE ACTION
-          if (isMyTurn && isAgentActive && !isLoading)
+          if (canRoll && isAgentActive && !isLoading)
             Column(
               children: [
                 if (!canEndTurn)
@@ -86,11 +94,9 @@ class ActionPanel extends StatelessWidget {
               enabled: false,
               onPressed: () {},
               color: Colors.grey,
-              disabledReason: !isAgentActive
-                  ? 'Agent Offline'
-                  : !isMyTurn
-                  ? 'Not Your Turn'
-                  : null,
+              disabledReason: isLoading
+                  ? 'Rolling...'
+                  : rollDisabledReason ?? 'Unavailable',
             ),
           const SizedBox(height: 12),
 
@@ -100,9 +106,11 @@ class ActionPanel extends StatelessWidget {
               key: const Key('btn_takeover'),
               label: 'TAKEOVER (2x)',
               icon: Icons.monetization_on,
-              enabled: isAgentActive && !isLoading,
+              enabled: canTakeoverProperty && !isLoading,
               onPressed: onTakeoverProperty,
               color: Colors.redAccent,
+              disabledReason:
+                  canTakeoverProperty ? null : takeoverDisabledReason,
             )
           else
             Row(
@@ -112,10 +120,11 @@ class ActionPanel extends StatelessWidget {
                     key: const Key('btn_buy'),
                     label: 'BUY',
                     icon: Icons.store,
-                    enabled: canBuyProperty && isAgentActive && !isLoading,
+                    enabled: canBuyProperty && !isLoading,
                     onPressed: onBuyProperty,
                     color: Colors.greenAccent,
-                    disabledReason: !canBuyProperty ? 'No Sale' : null,
+                    disabledReason:
+                        canBuyProperty ? null : buyDisabledReason,
                     compact: true,
                   ),
                 ),
@@ -125,10 +134,11 @@ class ActionPanel extends StatelessWidget {
                     key: const Key('btn_upgrade'),
                     label: 'UPGRADE',
                     icon: Icons.upgrade,
-                    enabled: canUpgradeProperty && isAgentActive && !isLoading,
+                    enabled: canUpgradeProperty && !isLoading,
                     onPressed: onUpgradeProperty,
                     color: Colors.purpleAccent,
-                    disabledReason: !canUpgradeProperty ? 'No Access' : null,
+                    disabledReason:
+                        canUpgradeProperty ? null : upgradeDisabledReason,
                     compact: true,
                   ),
                 ),
@@ -225,12 +235,17 @@ class _HoldToRollButtonState extends State<HoldToRollButton> {
   bool _isHolding = false;
 
   void _startHolding() {
+    _timer?.cancel();
     setState(() {
       _isHolding = true;
       _charge = 0.0;
     });
 
     _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() {
         // Charge fills in 2.0 seconds
         _charge += 0.016 / 2.0;
@@ -251,6 +266,12 @@ class _HoldToRollButtonState extends State<HoldToRollButton> {
         _charge = 0.0;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override

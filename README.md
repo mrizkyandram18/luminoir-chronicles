@@ -41,9 +41,9 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 - **Dynamic HUD**: Real-time credit tracking.
 
 ### Phase 5: Gatekeeper Security 🛡️
-- **Firestore Check**: Before rolling or upgrading, the system checks if the "Child Agent Service" is active.
-- **Verification**: `isChildAgentActive(id)` queries Firestore (5-minute threshold).
-- **Blocking**: Actions are denied with UI feedback if the agent is offline.
+- **Realtime Gatekeeper**: Central `GatekeeperService.isGatekeeperConnected` combines Firebase Auth and Firestore `isOnline`.
+- **Hard Start Gate**: Cyber Tycoon cannot enter gameplay if the Child Agent is offline or unknown.
+- **Hard Cut**: If the Child Agent disconnects mid-game, the board is cut instantly and routes to an unskippable `AccessDeniedScreen` (no offline mode, no grace period).
 
 ### Phase 6: Online Multiplayer ☁️
 - **Supabase Realtime**: Game state (players, scores, positions) synced via Supabase.
@@ -115,7 +115,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 - [x] Phase 2: Tile Mechanics
 - [x] Phase 3: Multiplayer (Local)
 - [x] Phase 4: Economy
-- [x] Phase 5: Gatekeeper (Real - 5min threshold)
+- [x] Phase 5: Gatekeeper (Realtime Child Agent enforcement)
 - [x] Phase 6: Multiplayer (Online - Granular Sync)
 - [x] Phase 10: User Profiles & Specific Usernames
 - [x] **Phase 11: Animation Layer (Flame/Rive/Lottie) ✨**
@@ -125,7 +125,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ## 📊 Quality Metrics
 - ✅ **Flutter Analyze:** 0 issues
-- ✅ **Unit Tests:** 103 tests
+- ✅ **Unit Tests:** 126 tests
 - ✅ **Code Coverage:** Animation layer, UI widgets, Services, Leaderboard, Multiplayer, Rules System
 - ✅ **Production Ready:** KISS/DRY principles applied, Standardized Mocks
 

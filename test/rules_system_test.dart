@@ -128,14 +128,11 @@ void main() {
       expect(controller.canRoll, isFalse);
       expect(controller.isMoving, isFalse);
 
-      final secondAttempt = controller.rollDice(gaugeValue: 0.5);
-      expect(
-        controller.isMoving,
-        isFalse,
-        reason: 'Second roll must be rejected in the same turn',
+      await expectLater(
+        controller.rollDice(gaugeValue: 0.5),
+        throwsA(isA<StateError>()),
       );
 
-      await secondAttempt;
       expect(controller.canRoll, isFalse);
       expect(controller.canEndTurn, isTrue);
     });
@@ -145,7 +142,10 @@ void main() {
       controller.currentPlayer.nodeId = 'node_2';
       controller.currentPlayer.position = 2;
 
-      await controller.buyProperty(2);
+      await expectLater(
+        controller.buyProperty(2),
+        throwsA(isA<StateError>()),
+      );
 
       expect(controller.properties['node_2']?.ownerId, isNull);
       expect(controller.actionTakenThisTurn, isFalse);
@@ -156,11 +156,42 @@ void main() {
     test('End turn is rejected before dice roll', () async {
       final firstPlayerId = controller.currentPlayer.id;
 
-      controller.endTurn();
+      expect(
+        () => controller.endTurn(),
+        throwsA(isA<StateError>()),
+      );
 
       expect(controller.currentPlayer.id, firstPlayerId);
       expect(controller.canRoll, isTrue);
       expect(controller.canEndTurn, isFalse);
+    });
+
+    test('Cannot act after end turn before next roll', () async {
+      controller.currentPlayer.credits = 5000;
+
+      await controller.rollDice(gaugeValue: 0.5);
+
+      controller.currentPlayer.nodeId = 'node_2';
+      controller.currentPlayer.position = 2;
+
+      await controller.buyProperty(2);
+      final firstOwner = controller.properties['node_2']?.ownerId;
+      final firstPlayerId = controller.currentPlayer.id;
+
+      controller.endTurn();
+
+      expect(controller.currentPlayer.id, isNot(firstPlayerId));
+
+      controller.currentPlayer.nodeId = 'node_4';
+      controller.currentPlayer.position = 4;
+
+      await expectLater(
+        controller.buyProperty(4),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(controller.properties['node_4']?.ownerId, isNull);
+      expect(firstOwner, isNotNull);
     });
 
     test('Action cannot be taken before movement ends', () async {
@@ -171,7 +202,10 @@ void main() {
       final rollFuture = controller.rollDice(gaugeValue: 0.5);
       expect(controller.isMoving, isTrue);
 
-      await controller.buyProperty(2);
+      await expectLater(
+        controller.buyProperty(2),
+        throwsA(isA<StateError>()),
+      );
       expect(
         controller.properties['node_2']?.ownerId,
         isNull,
@@ -509,7 +543,10 @@ void main() {
       controller.currentPlayer.nodeId = nodeId;
       controller.currentPlayer.position = 2;
 
-      await controller.buyPropertyTakeover(2);
+      await expectLater(
+        controller.buyPropertyTakeover(2),
+        throwsA(isA<StateError>()),
+      );
 
       // Takeover should have been blocked
       expect(
@@ -537,6 +574,27 @@ void main() {
 
       expect(controller.currentPlayer.credits, 0);
       expect(owner.credits, ownerStart + 50);
+    });
+
+    test('Tile resolution happens exactly once per landing on property', () async {
+      const nodeId = 'node_2';
+      final prop = controller.properties[nodeId]!;
+      controller.properties[nodeId] = prop.copyWith(ownerId: 'p2');
+
+      final owner = controller.players.firstWhere((p) => p.id == 'p2');
+      final expectedRent =
+          controller.properties[nodeId]!.currentRent * owner.scoreMultiplier;
+
+      controller.currentPlayer.nodeId = nodeId;
+      controller.currentPlayer.position = 2;
+      controller.currentPlayer.credits = 1000;
+
+      await controller.testMovePlayer(0);
+
+      expect(
+        controller.currentPlayer.credits,
+        1000 - expectedRent,
+      );
     });
 
     test('Credits never go negative after penalty', () async {

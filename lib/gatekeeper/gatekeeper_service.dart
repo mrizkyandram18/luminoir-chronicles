@@ -10,10 +10,11 @@ class GatekeeperService extends ChangeNotifier {
 
   // Realtime monitoring
   StreamSubscription<DocumentSnapshot>? _realtimeListener;
-  bool _isRealtimeActive = true;
+  bool _isRealtimeActive = false;
 
   bool get isSystemOnline => _isSystemOnline;
   bool get isRealtimeActive => _isRealtimeActive;
+  bool get isGatekeeperConnected => hasActiveAuthSession && isRealtimeActive;
 
   bool get hasActiveAuthSession =>
       FirebaseAuth.instance.currentUser != null;

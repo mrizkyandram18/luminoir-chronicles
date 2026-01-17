@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
 import '../../game_identity/game_identity_service.dart';
@@ -62,6 +63,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   void _startLocalGame(GameMode mode) {
+    final gatekeeper = context.read<GatekeeperService>();
+    if (!gatekeeper.isGatekeeperConnected) {
+      context.go('/access-denied', extra: 'OFFLINE');
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ChangeNotifierProvider(

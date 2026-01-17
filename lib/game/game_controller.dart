@@ -16,6 +16,18 @@ import 'models/match_result.dart';
 
 enum GameMode { practice, ranked, online }
 
+enum GamePhase {
+  waiting,
+  turnStart,
+  moving,
+  resolving,
+  action,
+  turnEnd,
+  finished,
+}
+
+enum TileResolutionType { empty, property, landmark, penalty, bonus }
+
 extension GameModePersistenceX on GameMode {
   bool get canPersist {
     switch (this) {
@@ -84,10 +96,16 @@ class GameController extends ChangeNotifier {
   String? _currentMatchId;
   bool _matchEnded = false;
 
+  final Set<String> _bankruptPlayerIds = {};
+
+  GamePhase _phase = GamePhase.waiting;
+
   // Getters for multiplayer state
   bool get isMyTurn => _isMyTurn;
   List<RoomPlayer> get roomPlayers => _roomPlayers;
   bool get matchEnded => _matchEnded;
+
+  GamePhase get phase => _phase;
 
   // Game Rule State Flags
   bool _canRoll = true;
@@ -97,10 +115,91 @@ class GameController extends ChangeNotifier {
   bool _passedStartThisMove = false; // Track START crossing per move
 
   // Getters for Rule Enforcement
-  bool get canRoll => _canRoll && !matchEnded && !_isMoving;
-  bool get canEndTurn => _canEndTurn && !matchEnded && !_isMoving;
+  bool get canRoll =>
+      _phase == GamePhase.turnStart && _canRoll && !matchEnded && !_isMoving;
+  bool get canEndTurn =>
+      (_phase == GamePhase.action || _phase == GamePhase.turnEnd) &&
+      _canEndTurn &&
+      !matchEnded &&
+      !_isMoving;
   bool get actionTakenThisTurn => _actionTakenThisTurn;
   bool get isMoving => _isMoving;
+
+  // Gatekeeper-aware Agent Status
+  bool get isAgentActive => _gatekeeper.isGatekeeperConnected;
+
+  // Convenience: Current Tile based on legacy position adapter
+  Tile get currentTile => tiles[currentPlayer.position];
+
+  // Roll / End Turn UI helpers
+  String? get rollDisabledReason {
+    if (!isAgentActive) return "Agent Offline";
+    if (matchEnded) return "Match Ended";
+    if (_isMoving) return "Wait for Movement";
+    if (isMultiplayer && !_isMyTurn) return "Not Your Turn";
+    if (!_canRoll) return "Already Rolled";
+    return null;
+  }
+
+  String? get endTurnDisabledReason {
+    if (!isAgentActive) return "Agent Offline";
+    if (matchEnded) return "Match Ended";
+    if (_isMoving) return "Wait for Movement";
+    if (isMultiplayer && !_isMyTurn) return "Not Your Turn";
+    if (!_canEndTurn) return "Roll First";
+    return null;
+  }
+
+  // Property Action UI helpers
+  String? get buyPropertyDisabledReason {
+    final tile = currentTile;
+    if (!isAgentActive) return "Agent Offline";
+    if (matchEnded) return "Match Ended";
+    if (_isMoving) return "Wait for Movement";
+    if (isMultiplayer && !_isMyTurn) return "Not Your Turn";
+    if (tile.type != TileType.property) return "Not a Property";
+    if (tile.ownerId != null) return "Already Owned";
+    if (currentPlayer.credits < tile.value) return "Not Enough Credits";
+    if (_actionTakenThisTurn) return "Action Already Taken";
+    return null;
+  }
+
+  bool get canBuyProperty => buyPropertyDisabledReason == null;
+
+  String? get upgradePropertyDisabledReason {
+    final tile = currentTile;
+    if (!isAgentActive) return "Agent Offline";
+    if (matchEnded) return "Match Ended";
+    if (_isMoving) return "Wait for Movement";
+    if (isMultiplayer && !_isMyTurn) return "Not Your Turn";
+    if (tile.type != TileType.property) return "Not a Property";
+    if (tile.ownerId != currentPlayer.id) return "Not Your Property";
+    final upgradeCost = (tile.value * 0.5).round();
+    if (currentPlayer.credits < upgradeCost) return "Not Enough Credits";
+    if (tile.upgradeLevel >= 4) return "Max Level Reached";
+    if (_actionTakenThisTurn) return "Action Already Taken";
+    return null;
+  }
+
+  bool get canUpgradeProperty => upgradePropertyDisabledReason == null;
+
+  String? get takeoverPropertyDisabledReason {
+    final tile = currentTile;
+    if (!isAgentActive) return "Agent Offline";
+    if (matchEnded) return "Match Ended";
+    if (_isMoving) return "Wait for Movement";
+    if (isMultiplayer && !_isMyTurn) return "Not Your Turn";
+    if (tile.type != TileType.property) return "Not a Property";
+    if (tile.ownerId == null) return "Bank Owned";
+    if (tile.ownerId == currentPlayer.id) return "Already Yours";
+    final takeoverCost = tile.value * 2;
+    if (currentPlayer.credits < takeoverCost) return "Not Enough Credits";
+    if (tile.upgradeLevel >= 4) return "Cannot Takeover Landmark";
+    if (_actionTakenThisTurn) return "Action Already Taken";
+    return null;
+  }
+
+  bool get canTakeoverProperty => takeoverPropertyDisabledReason == null;
 
   GameController(
     this._gatekeeper, {
@@ -177,6 +276,8 @@ class GameController extends ChangeNotifier {
     } else {
       _currentMatchId = 'practice_${DateTime.now().millisecondsSinceEpoch}';
     }
+
+    _phase = GamePhase.turnStart;
   }
 
   void _initializeProperties() {
@@ -465,12 +566,17 @@ class GameController extends ChangeNotifier {
 
   Future<void> rollDice({double gaugeValue = 0.5}) async {
     if (_isActionBlockedForTurnOwner()) return;
-    if (!_canRoll) return;
-    if (_isDisposed || _matchEnded || _isMoving) return;
+    if (_phase != GamePhase.turnStart) {
+      throw StateError(
+        'rollDice can only be called during turnStart phase',
+      );
+    }
+    if (!canRoll) return;
+    if (_isDisposed) return;
 
-    _canRoll = false; // Lock rolling
+    _canRoll = false;
     _isMoving = true;
-    _actionTakenThisTurn = false; // Reset for new turn
+    _actionTakenThisTurn = false;
 
     // Phase 5: Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
@@ -516,19 +622,32 @@ class GameController extends ChangeNotifier {
 
     await Future.delayed(const Duration(milliseconds: 1500));
 
+    _phase = GamePhase.moving;
+    _safeNotifyListeners();
+
     // Move Step-by-Step
     await _moveCurrentPlayer(_diceRoll);
 
     await Future.delayed(const Duration(milliseconds: 200));
     if (_isDisposed || _matchEnded) {
       _isMoving = false;
+      if (_matchEnded) {
+        _phase = GamePhase.finished;
+      }
       return;
     }
+
+    _phase = GamePhase.resolving;
+    _safeNotifyListeners();
 
     await _handleTileLanding();
 
     await _checkGameOverCondition();
-    if (_matchEnded) return;
+    if (_matchEnded) {
+      _isMoving = false;
+      _phase = GamePhase.finished;
+      return;
+    }
 
     if (gameMode.canPersist) {
       await _supabase.upsertPlayer(currentPlayer);
@@ -536,6 +655,7 @@ class GameController extends ChangeNotifier {
 
     _isMoving = false;
     _canEndTurn = true;
+    _phase = GamePhase.action;
     _safeNotifyListeners();
 
     await _checkGameOverCondition();
@@ -616,6 +736,11 @@ class GameController extends ChangeNotifier {
   void endTurn() {
     if (_isActionBlockedForTurnOwner()) return;
     if (_isMoving) return;
+    if (_phase != GamePhase.action && _phase != GamePhase.turnEnd) {
+      throw StateError(
+        'endTurn can only be called during action or turnEnd phase',
+      );
+    }
     if (!canEndTurn) return;
     if (!_matchEnded && gameMode != GameMode.practice) {
       autosave();
@@ -639,6 +764,7 @@ class GameController extends ChangeNotifier {
     _isMoving = false;
     if (!_matchEnded) {
       _canEndTurn = true;
+      _phase = GamePhase.action;
     }
   }
 
@@ -674,6 +800,8 @@ class GameController extends ChangeNotifier {
 
       _lastEffectMessage = "BANKRUPT! ${player.name} has lost.";
       // NOTE: Actual game end is now handled in _checkGameOverCondition
+      _bankruptPlayerIds.add(player.id);
+      await _checkGameOverCondition();
     }
   }
 
@@ -684,6 +812,7 @@ class GameController extends ChangeNotifier {
     _isMoving = false;
 
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
+    _phase = GamePhase.turnStart;
     _safeNotifyListeners();
 
     // AI Turn Logic
@@ -746,6 +875,11 @@ class GameController extends ChangeNotifier {
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
     if (_isActionBlockedForTurnOwner()) return;
+    if (_phase != GamePhase.action) {
+      throw StateError(
+        'buyProperty can only be called during action phase',
+      );
+    }
     if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
 
@@ -799,6 +933,11 @@ class GameController extends ChangeNotifier {
   /// Upgrade a property (Tycoon Mechanic)
   Future<void> buyPropertyUpgrade(int tileId) async {
     if (_isActionBlockedForTurnOwner()) return;
+    if (_phase != GamePhase.action) {
+      throw StateError(
+        'buyPropertyUpgrade can only be called during action phase',
+      );
+    }
     if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
@@ -869,6 +1008,11 @@ class GameController extends ChangeNotifier {
   /// Takeover a property from another player (Hostile Takeover)
   Future<void> buyPropertyTakeover(int tileId) async {
     if (_isActionBlockedForTurnOwner()) return;
+    if (_phase != GamePhase.action) {
+      throw StateError(
+        'buyPropertyTakeover can only be called during action phase',
+      );
+    }
     if (_canRoll) return;
     if (_isMoving || _actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
@@ -947,6 +1091,25 @@ class GameController extends ChangeNotifier {
 
   bool _isResolvingEvent = false;
 
+  TileResolutionType _getTileResolutionType(String nodeId, BoardNode node) {
+    final property = _properties[nodeId];
+    if (node.type == NodeType.property) {
+      if (property != null && property.hasLandmark) {
+        return TileResolutionType.landmark;
+      }
+      return TileResolutionType.property;
+    }
+    if (node.type == NodeType.prison) {
+      return TileResolutionType.penalty;
+    }
+    if (node.type == NodeType.start ||
+        node.type == NodeType.minigame ||
+        node.type == NodeType.event) {
+      return TileResolutionType.bonus;
+    }
+    return TileResolutionType.empty;
+  }
+
   Future<void> _handleTileLanding() async {
     String currentId = currentPlayer.nodeId;
     BoardNode? node = _boardGraph.getNode(currentId);
@@ -955,22 +1118,26 @@ class GameController extends ChangeNotifier {
     final int multiplier = currentPlayer.scoreMultiplier;
     _currentEventCard = null;
 
-    switch (node.type) {
-      case NodeType.start:
-        // RULE: Landing bonus is separate from Passing Salary
-        // Passing (200) + Landing (100) = 300 Total
-        currentPlayer.score += (200 * multiplier);
-        currentPlayer.credits += kStartBonus;
-        _lastEffectMessage =
-            "Exact Landing Bonus! +${200 * multiplier} Score, +$kStartBonus Credits";
+    final PropertyDetails? prop = _properties[currentId];
+    final TileResolutionType type = _getTileResolutionType(currentId, node);
+
+    switch (type) {
+      case TileResolutionType.bonus:
+        if (node.type == NodeType.start) {
+          currentPlayer.score += (200 * multiplier);
+          currentPlayer.credits += kStartBonus;
+          _lastEffectMessage =
+              "Exact Landing Bonus! +${200 * multiplier} Score, +$kStartBonus Credits";
+        } else if (node.type == NodeType.minigame) {
+          int reward = kMinigameReward * multiplier;
+          currentPlayer.credits += reward;
+          currentPlayer.score += kMinigameScore * multiplier;
+          _lastEffectMessage = "Dark Web Loot! +$reward Credits";
+        } else if (node.type == NodeType.event) {
+          await _handleEventCardLanding();
+        }
         break;
-      case NodeType.minigame:
-        int reward = kMinigameReward * multiplier;
-        currentPlayer.credits += reward;
-        currentPlayer.score += kMinigameScore * multiplier;
-        _lastEffectMessage = "Dark Web Loot! +$reward Credits";
-        break;
-      case NodeType.prison:
+      case TileResolutionType.penalty:
         int penalty = kPrisonPenalty * multiplier;
         final paid = _transferCredits(from: currentPlayer, amount: penalty);
         currentPlayer.score = max(0, currentPlayer.score - kPrisonScorePenalty);
@@ -982,21 +1149,15 @@ class GameController extends ChangeNotifier {
         if (_matchEnded) return;
         _lastEffectMessage = "System Error! -$paid Credits";
         break;
-      case NodeType.event:
-        await _handleEventCardLanding();
-        break;
-      case NodeType.property:
-        PropertyDetails? prop = _properties[currentId];
+      case TileResolutionType.property:
+      case TileResolutionType.landmark:
         if (prop != null) {
           if (prop.ownerId == null) {
             _lastEffectMessage =
                 "AVAILABLE: ${node.label} (${prop.baseValue} CR)";
           } else if (prop.ownerId != currentPlayer.id) {
-            // RULE: Rent is multiplied by the OWNER's stats
             final owner = _players.firstWhere((p) => p.id == prop.ownerId);
             final rent = prop.currentRent * owner.scoreMultiplier;
-
-            // Immediate Payment Rule with Bankruptcy check
             final actualPayment = _transferCredits(
               from: currentPlayer,
               to: owner,
@@ -1021,7 +1182,7 @@ class GameController extends ChangeNotifier {
           }
         }
         break;
-      default:
+      case TileResolutionType.empty:
         break;
     }
     _safeNotifyListeners();
@@ -1182,6 +1343,10 @@ class GameController extends ChangeNotifier {
     if (_matchEnded) return;
 
     _matchEnded = true;
+    _phase = GamePhase.finished;
+    _canRoll = false;
+    _canEndTurn = false;
+    _isMoving = false;
 
     final humanPlayer = _players.firstWhere(
       (p) => p.isHuman && p.id == _currentChildId,
@@ -1246,24 +1411,34 @@ class GameController extends ChangeNotifier {
     }
     // 2. RANKED / ONLINE: Bankruptcy OR Score Threshold
     else {
-      // A) Last Standing Rule (Bankruptcy)
-      // Count active players (credits > 0 OR owns properties)
-      // Simpler rule: Players with 0 credits who couldn't pay are "out" logic-wise,
-      // but for simplicity, we check if they are "Bankrupt" (0 credits + invalid state).
-      // Here we assume if you have > 0 credits you are alive.
+      final Player humanPlayer = _players.firstWhere(
+        (p) => p.isHuman && p.id == _currentChildId,
+        orElse: () => _players.first,
+      );
 
-      final activePlayers = _players.where((p) => p.credits > 0).toList();
+      final bool humanBankrupt = _bankruptPlayerIds.contains(humanPlayer.id);
 
-      // If 1 or 0 remain, game over
-      if (activePlayers.length <= 1) {
+      if (humanBankrupt) {
         gameOver = true;
-        winnerId = activePlayers.isNotEmpty ? activePlayers.first.id : null;
-      }
-
-      // B) Score Threshold (10,000)
-      if (!gameOver && _players.any((p) => p.score >= 10000)) {
+        final remainingPlayers =
+            _players.where((p) => p.id != humanPlayer.id).toList();
+        if (remainingPlayers.isNotEmpty) {
+          winnerId =
+              remainingPlayers.reduce((a, b) => a.score > b.score ? a : b).id;
+        }
+      } else if (_players.any((p) => p.score >= 10000)) {
         gameOver = true;
         winnerId = _players.reduce((a, b) => a.score > b.score ? a : b).id;
+      } else {
+        final activePlayers = _players
+            .where((p) => !_bankruptPlayerIds.contains(p.id))
+            .toList();
+
+        if (activePlayers.length <= 1) {
+          gameOver = true;
+          winnerId =
+              activePlayers.isNotEmpty ? activePlayers.first.id : null;
+        }
       }
     }
 
