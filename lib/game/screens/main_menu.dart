@@ -31,6 +31,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     super.initState();
     final identity = context.read<GameIdentityService>();
     _nameController.text = identity.getName(widget.childId);
+    identity.loadName(widget.childId).then((_) {
+      if (!mounted) return;
+      _nameController.text = identity.getName(widget.childId);
+      setState(() {});
+    });
   }
 
   @override

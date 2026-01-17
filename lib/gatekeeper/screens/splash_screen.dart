@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../gatekeeper_service.dart';
+import '../../bootstrap/launch_flow.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,15 +23,20 @@ class _SplashScreenState extends State<SplashScreen> {
     final gatekeeper = context.read<GatekeeperService>();
     await gatekeeper.checkStatus();
 
-    if (mounted) {
-      if (gatekeeper.isSystemOnline) {
-        context.go('/setup');
-      } else {
-        context.go(
-          '/access-denied',
-          extra: 'SERVICE_STOPPED',
-        );
-      }
+    if (!mounted) return;
+
+    final decision = evaluateLaunchDecision(
+      hasActiveAuthSession: gatekeeper.hasActiveAuthSession,
+      heartbeat: null,
+    );
+
+    if (decision.canEnterGame) {
+      context.go('/setup');
+    } else {
+      context.go(
+        '/access-denied',
+        extra: decision.reasonCode ?? 'SERVICE_STOPPED',
+      );
     }
   }
 

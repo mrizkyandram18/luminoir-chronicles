@@ -10,6 +10,9 @@ class MockGatekeeperService extends Mock implements GatekeeperService {
   bool get isSystemOnline => true;
 
   @override
+  bool get hasActiveAuthSession => true;
+
+  @override
   Future<void> checkStatus() async {
     // No-op for test
     notifyListeners();

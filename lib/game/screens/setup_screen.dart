@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../gatekeeper/gatekeeper_service.dart';
 import '../../gatekeeper/screens/access_denied_screen.dart';
+import '../../bootstrap/launch_flow.dart';
 import 'main_menu.dart';
 import 'package:provider/provider.dart';
 
@@ -36,19 +37,23 @@ class _SetupScreenState extends State<SetupScreen> {
 
     if (!mounted) return;
 
-    if (!result.isSuccess) {
+    final decision = evaluateLaunchDecision(
+      hasActiveAuthSession: true,
+      heartbeat: result,
+    );
+
+    if (!decision.canEnterGame) {
       setState(() => _isLoading = false);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const AccessDeniedScreen(
-            reasonCode: 'OFFLINE',
+          builder: (_) => AccessDeniedScreen(
+            reasonCode: decision.reasonCode ?? 'OFFLINE',
           ),
         ),
       );
       return;
     }
 
-    // Start realtime monitoring
     gatekeeper.startRealtimeMonitoring(
       _parentId,
       _childIdController.text.trim(),
