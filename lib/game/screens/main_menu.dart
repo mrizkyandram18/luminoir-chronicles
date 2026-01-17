@@ -113,7 +113,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   Text(
                     'CYBER TYCOON',
                     style: GoogleFonts.orbitron(
-                      fontSize: 48,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.cyanAccent,
                       shadows: [
@@ -127,7 +127,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
                   // Profile Section
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.symmetric(horizontal: 40),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.05),
@@ -210,7 +210,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
 
                   // Game Modes
                   ElevatedButton(
@@ -218,7 +218,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       backgroundColor: Colors.cyanAccent.withValues(alpha: 0.1),
                       foregroundColor: Colors.cyanAccent,
                       side: const BorderSide(color: Colors.cyanAccent),
-                      minimumSize: const Size(250, 60),
+                      minimumSize: const Size(220, 45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -227,12 +227,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     child: Text(
                       'PRACTICE',
                       style: GoogleFonts.orbitron(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orangeAccent.withValues(
@@ -240,7 +240,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       ),
                       foregroundColor: Colors.orangeAccent,
                       side: const BorderSide(color: Colors.orangeAccent),
-                      minimumSize: const Size(250, 60),
+                      minimumSize: const Size(220, 45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -249,12 +249,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     child: Text(
                       'RANKED',
                       style: GoogleFonts.orbitron(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFFF6B6B),
@@ -262,7 +262,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                         color: Color(0xFFFF6B6B),
                         width: 2,
                       ),
-                      minimumSize: const Size(250, 60),
+                      minimumSize: const Size(220, 45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -271,7 +271,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     child: Text(
                       'ONLINE',
                       style: GoogleFonts.orbitron(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

@@ -51,7 +51,7 @@ class ActionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
@@ -71,9 +71,12 @@ class ActionPanel extends StatelessWidget {
             Column(
               children: [
                 if (!canEndTurn)
-                  HoldToRollButton(
-                    key: const Key('gauge_roll'),
-                    onRoll: onRollDice,
+                  Transform.scale(
+                    scale: 0.85, // Scale down the hold button
+                    child: HoldToRollButton(
+                      key: const Key('gauge_roll'),
+                      onRoll: onRollDice,
+                    ),
                   )
                 else
                   _buildActionButton(
@@ -83,6 +86,7 @@ class ActionPanel extends StatelessWidget {
                     enabled: true,
                     onPressed: onEndTurn,
                     color: Colors.cyanAccent,
+                    compact: true, // Force compact
                   ),
               ],
             )
@@ -97,9 +101,9 @@ class ActionPanel extends StatelessWidget {
               disabledReason: isLoading
                   ? 'Rolling...'
                   : rollDisabledReason ?? 'Unavailable',
+              compact: true, // Force compact
             ),
-          const SizedBox(height: 12),
-
+          const SizedBox(height: 6), // Reduce gap
           // CONTEXTUAL ACTIONS
           if (canTakeoverProperty)
             _buildActionButton(
@@ -109,8 +113,10 @@ class ActionPanel extends StatelessWidget {
               enabled: canTakeoverProperty && !isLoading,
               onPressed: onTakeoverProperty,
               color: Colors.redAccent,
-              disabledReason:
-                  canTakeoverProperty ? null : takeoverDisabledReason,
+              disabledReason: canTakeoverProperty
+                  ? null
+                  : takeoverDisabledReason,
+              compact: true,
             )
           else
             Row(
@@ -123,12 +129,11 @@ class ActionPanel extends StatelessWidget {
                     enabled: canBuyProperty && !isLoading,
                     onPressed: onBuyProperty,
                     color: Colors.greenAccent,
-                    disabledReason:
-                        canBuyProperty ? null : buyDisabledReason,
+                    disabledReason: canBuyProperty ? null : buyDisabledReason,
                     compact: true,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildActionButton(
                     key: const Key('btn_upgrade'),
@@ -137,8 +142,9 @@ class ActionPanel extends StatelessWidget {
                     enabled: canUpgradeProperty && !isLoading,
                     onPressed: onUpgradeProperty,
                     color: Colors.purpleAccent,
-                    disabledReason:
-                        canUpgradeProperty ? null : upgradeDisabledReason,
+                    disabledReason: canUpgradeProperty
+                        ? null
+                        : upgradeDisabledReason,
                     compact: true,
                   ),
                 ),
@@ -146,7 +152,7 @@ class ActionPanel extends StatelessWidget {
             ),
 
           if (showSaveLoad) ...[
-            const Divider(color: Colors.cyanAccent, height: 24),
+            const Divider(color: Colors.cyanAccent, height: 12),
             Row(
               children: [
                 Expanded(
@@ -160,7 +166,7 @@ class ActionPanel extends StatelessWidget {
                     compact: true,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildActionButton(
                     key: const Key('btn_load'),
@@ -198,8 +204,9 @@ class ActionPanel extends StatelessWidget {
         icon: Icon(icon, size: compact ? 16 : 20),
         label: Text(
           label,
+          textAlign: TextAlign.center,
           style: GoogleFonts.orbitron(
-            fontSize: compact ? 12 : 14,
+            fontSize: compact ? 10 : 12,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -207,7 +214,7 @@ class ActionPanel extends StatelessWidget {
           backgroundColor: enabled ? color : Colors.grey.shade800,
           foregroundColor: Colors.black,
           padding: EdgeInsets.symmetric(
-            vertical: compact ? 12 : 16,
+            vertical: compact ? 10 : 16,
             horizontal: 16,
           ),
           shape: RoundedRectangleBorder(
@@ -281,7 +288,7 @@ class _HoldToRollButtonState extends State<HoldToRollButton> {
       onTapUp: (_) => _release(),
       onTapCancel: () => _release(),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: _isHolding ? Colors.grey.shade900 : Colors.cyanAccent,
           borderRadius: BorderRadius.circular(12),
