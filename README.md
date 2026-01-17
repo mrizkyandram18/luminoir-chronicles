@@ -22,6 +22,14 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
   - ⚪ **Start**: Lap bonus.
 - **Visual Feedback**: Neon glows and snackbar alerts.
 
+### START Tile & Lap Invariant 🏁
+- **Deterministic Bonuses**: START tile bonuses are never double-triggered.
+- **Passing START**: +200 Credits (Salary).
+- **Landing on START**: +100 Credits (Bonus).
+- **Pass + Land**: 300 Credits total in a single move.
+- **Long Moves**: Wrapping the board only grants passing bonus once per move.
+- **Flag System**: `passedStartThisMove` prevents duplicate salary grants.
+
 ### Phase 3: Local Multiplayer
 - **4-Player Support**: Cyan, Purple, Orange, Green players.
 - **Turn System**: Auto-rotating turns.
@@ -100,7 +108,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 - `lib/game/animations/`: Animation components (TokenAnimator, EffectsManager, DiceAnimation).
 - `lib/game/widgets/`: Reusable UI widgets (ActionPanel, HudOverlay).
 - `lib/gatekeeper/`: Access control (Firestore Logic).
-- `test/`: Comprehensive unit tests (85+ tests).
+- `test/`: Comprehensive unit tests (100+ tests).
 
 ## 🔮 Roadmap
 - [x] Phase 1: MVP Core
@@ -117,8 +125,8 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ## 📊 Quality Metrics
 - ✅ **Flutter Analyze:** 0 issues
-- ✅ **Unit Tests:** 85+ tests
-- ✅ **Code Coverage:** Animation layer, UI widgets, Services, Leaderboard, Multiplayer
+- ✅ **Unit Tests:** 103 tests
+- ✅ **Code Coverage:** Animation layer, UI widgets, Services, Leaderboard, Multiplayer, Rules System
 - ✅ **Production Ready:** KISS/DRY principles applied, Standardized Mocks
 
 ## 📚 Documentation
