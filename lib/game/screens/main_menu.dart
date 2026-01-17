@@ -50,10 +50,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     setState(() => _isLoading = true);
     final identity = context.read<GameIdentityService>();
-    await identity.rename(
-      widget.childId,
-      _nameController.text.trim(),
-    );
+    await identity.rename(widget.childId, _nameController.text.trim());
     if (mounted) {
       setState(() {
         _isEditing = false;
@@ -109,171 +106,178 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
           ),
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'CYBER TYCOON',
-                  style: GoogleFonts.orbitron(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.cyanAccent,
-                    shadows: [
-                      BoxShadow(
-                        color: Colors.cyan,
-                        blurRadius: 20,
-                        spreadRadius: 10,
-                      ),
-                    ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'CYBER TYCOON',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.cyanAccent,
+                      shadows: [
+                        BoxShadow(
+                          color: Colors.cyan,
+                          blurRadius: 20,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                // Profile Section
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "USER PROFILE",
-                            style: GoogleFonts.orbitron(
-                              fontSize: 14,
-                              color: Colors.cyanAccent,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                          if (!_isEditing)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                size: 18,
-                                color: Colors.white54,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _isEditing = true),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      if (_isEditing)
+                  // Profile Section
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Column(
+                      children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _nameController,
-                                autofocus: true,
-                                style: GoogleFonts.sourceCodePro(
-                                  color: Colors.white,
+                            Text(
+                              "USER PROFILE",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 14,
+                                color: Colors.cyanAccent,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            if (!_isEditing)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  size: 18,
+                                  color: Colors.white54,
                                 ),
-                                decoration: const InputDecoration(
-                                  isDense: true,
-                                  enabledBorder: UnderlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.cyanAccent,
+                                onPressed: () =>
+                                    setState(() => _isEditing = true),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (_isEditing)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _nameController,
+                                  autofocus: true,
+                                  style: GoogleFonts.sourceCodePro(
+                                    color: Colors.white,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: Colors.cyanAccent,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
+                              if (_isLoading)
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              else
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.check,
+                                    color: Colors.greenAccent,
+                                  ),
+                                  onPressed: _updateName,
+                                ),
+                            ],
+                          )
+                        else
+                          Text(
+                            _nameController.text,
+                            style: GoogleFonts.sourceCodePro(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-                            if (_isLoading)
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            else
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.check,
-                                  color: Colors.greenAccent,
-                                ),
-                                onPressed: _updateName,
-                              ),
-                          ],
-                        )
-                      else
-                        Text(
-                          _nameController.text,
-                          style: GoogleFonts.sourceCodePro(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 40),
+                  const SizedBox(height: 40),
 
-                // Game Modes
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent.withValues(alpha: 0.1),
-                    foregroundColor: Colors.cyanAccent,
-                    side: const BorderSide(color: Colors.cyanAccent),
-                    minimumSize: const Size(250, 60),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  // Game Modes
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyanAccent.withValues(alpha: 0.1),
+                      foregroundColor: Colors.cyanAccent,
+                      side: const BorderSide(color: Colors.cyanAccent),
+                      minimumSize: const Size(250, 60),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => _startLocalGame(GameMode.practice),
+                    child: Text(
+                      'PRACTICE',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  onPressed: () => _startLocalGame(GameMode.practice),
-                  child: Text(
-                    'PRACTICE',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent.withValues(
+                        alpha: 0.1,
+                      ),
+                      foregroundColor: Colors.orangeAccent,
+                      side: const BorderSide(color: Colors.orangeAccent),
+                      minimumSize: const Size(250, 60),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => _startLocalGame(GameMode.ranked),
+                    child: Text(
+                      'RANKED',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.1),
-                    foregroundColor: Colors.orangeAccent,
-                    side: const BorderSide(color: Colors.orangeAccent),
-                    minimumSize: const Size(250, 60),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF6B6B),
+                      side: const BorderSide(
+                        color: Color(0xFFFF6B6B),
+                        width: 2,
+                      ),
+                      minimumSize: const Size(250, 60),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _goToMultiplayer,
+                    child: Text(
+                      'ONLINE',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  onPressed: () => _startLocalGame(GameMode.ranked),
-                  child: Text(
-                    'RANKED',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFF6B6B),
-                    side: const BorderSide(color: Color(0xFFFF6B6B), width: 2),
-                    minimumSize: const Size(250, 60),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: _goToMultiplayer,
-                  child: Text(
-                    'ONLINE',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

@@ -23,13 +23,16 @@ void main() {
       expect(service.isGatekeeperConnected, isTrue);
     });
 
-    test('isGatekeeperConnected false when auth session is missing', () {
-      final service = TestGatekeeperService();
-      service.session = false;
-      service.realtime = true;
+    test(
+      'isGatekeeperConnected true even when auth session is missing (Relaxed Rule)',
+      () {
+        final service = TestGatekeeperService();
+        service.session = false;
+        service.realtime = true;
 
-      expect(service.isGatekeeperConnected, isFalse);
-    });
+        expect(service.isGatekeeperConnected, isTrue);
+      },
+    );
 
     test('isGatekeeperConnected false when realtime flag is inactive', () {
       final service = TestGatekeeperService();

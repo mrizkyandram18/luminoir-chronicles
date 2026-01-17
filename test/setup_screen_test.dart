@@ -14,6 +14,11 @@ class FakeGatekeeperInactive extends GatekeeperService {
   ) async {
     return const GatekeeperResult(GatekeeperResultCode.userInactive);
   }
+
+  @override
+  Future<bool> isUserAllowed(String userId) async {
+    return true; // Mock whitelist check
+  }
 }
 
 void main() {
@@ -52,10 +57,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.byType(TextField),
-        'child-123',
-      );
+      await tester.enterText(find.byType(TextField), 'child-123');
 
       await tester.tap(find.text('LOGIN TO SYSTEM'));
       await tester.pumpAndSettle();

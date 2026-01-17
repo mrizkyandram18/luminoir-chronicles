@@ -42,6 +42,25 @@
                     "other_platform_oauth_client": []
                 }
             }
+        },
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:769889944258:android:c55d16ae7fd826505af15b",
+                "android_client_info": {
+                    "package_name": "com.mrizkyandram18.cyber_tycoon"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyA9nGB4QaPrUCxq_9WMhFR880kESR6T1Nc"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
         }
     ],
     "configuration_version": "1"

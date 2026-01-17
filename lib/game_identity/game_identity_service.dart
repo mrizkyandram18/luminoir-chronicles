@@ -10,7 +10,7 @@ class SupabaseGameIdentityStore implements GameIdentityStore {
   final SupabaseClient _client;
 
   SupabaseGameIdentityStore({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   @override
   Future<String?> loadDisplayName(String childId) async {
@@ -41,7 +41,7 @@ class GameIdentityService extends ChangeNotifier {
   final Map<String, String> _namesByChildId = {};
 
   GameIdentityService({GameIdentityStore? store})
-      : _store = store ?? SupabaseGameIdentityStore();
+    : _store = store ?? SupabaseGameIdentityStore();
 
   String getName(String childId) {
     return _namesByChildId[childId] ?? childId;

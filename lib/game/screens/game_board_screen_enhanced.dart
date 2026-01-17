@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -47,7 +48,12 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
     if (state == AppLifecycleState.resumed) {
       final gatekeeper = context.read<GatekeeperService>();
       if (!gatekeeper.isGatekeeperConnected) {
-        context.go('/access-denied', extra: 'OFFLINE');
+        if (controller.gameMode == GameMode.practice) {
+          // Practice Mode: Do nothing here, the build method will show overlay
+        } else {
+          // Ranked/Online: Strict Exit
+          context.go('/access-denied', extra: 'OFFLINE');
+        }
         return;
       }
       _isBackgrounded = false;
@@ -82,22 +88,37 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
   @override
   Widget build(BuildContext context) {
     final gatekeeper = context.watch<GatekeeperService>();
-    if (!gatekeeper.isGatekeeperConnected) {
+    final controller = context.read<GameController>();
+
+    // Strict Mode Check Trigger
+    if (!gatekeeper.isGatekeeperConnected &&
+        controller.gameMode != GameMode.practice) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
         context.go('/access-denied', extra: 'OFFLINE');
       });
     }
-    final controller = context.read<GameController>();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, dynamic result) async {
-        if (didPop) {
+        if (didPop) return;
+
+        final navigator = Navigator.of(context);
+
+        // Ranked/Online: Exit App completely
+        if (controller.gameMode != GameMode.practice) {
+          final shouldExit = await showDialog<bool>(
+            context: context,
+            builder: (ctx) =>
+                _buildExitDialog(ctx, "Forfeit Match & Exit App?"),
+          );
+          if (shouldExit == true) {
+            SystemNavigator.pop();
+          }
           return;
         }
-        final navigator = Navigator.of(context);
+
+        // Practice: Return to Lobby
         final phase = controller.phase;
         final isSafeToExit =
             controller.matchEnded || phase == GamePhase.waiting;
@@ -107,29 +128,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
         }
         final shouldExit = await showDialog<bool>(
           context: context,
-          builder: (ctx) {
-            return AlertDialog(
-              backgroundColor: Colors.black,
-              title: Text(
-                "Exit Game?",
-                style: GoogleFonts.orbitron(color: Colors.white),
-              ),
-              content: Text(
-                "Your current turn will be lost. Are you sure?",
-                style: GoogleFonts.robotoMono(color: Colors.white),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: const Text("CANCEL"),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: const Text("EXIT"),
-                ),
-              ],
-            );
-          },
+          builder: (ctx) => _buildExitDialog(ctx, "Exit to Lobby?"),
         );
         if (shouldExit == true) {
           navigator.maybePop();
@@ -155,9 +154,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
                       builder: (_, player, _) =>
                           _buildTurnIndicator(controller),
                     ),
-                    Expanded(
-                      child: _buildBoard(context, controller),
-                    ),
+                    Expanded(child: _buildBoard(context, controller)),
                   ],
                 ),
                 Positioned(
@@ -239,8 +236,9 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
                               }
                             },
                             onBuyProperty: () async {
-                              await ctrl
-                                  .buyProperty(ctrl.currentPlayer.position);
+                              await ctrl.buyProperty(
+                                ctrl.currentPlayer.position,
+                              );
                               if (context.mounted &&
                                   ctrl.lastEffectMessage != null) {
                                 _showSnackBar(
@@ -312,7 +310,7 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
                       return const SizedBox.shrink();
                     }
                     return Positioned(
-                      bottom: 160,
+                      bottom: 250,
                       left: 0,
                       right: 0,
                       child: IgnorePointer(
@@ -320,8 +318,9 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
                           scale: 0.6,
                           child: DiceAnimation(
                             isRolling: _isRolling,
-                            diceResult:
-                                ctrl.diceRoll > 0 ? ctrl.diceRoll : null,
+                            diceResult: ctrl.diceRoll > 0
+                                ? ctrl.diceRoll
+                                : null,
                             onRollComplete: () {
                               if (mounted) {
                                 setState(() {
@@ -335,11 +334,88 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced>
                     );
                   },
                 ),
+                // Offline Overlay
+                if (!gatekeeper.isGatekeeperConnected &&
+                    controller.gameMode == GameMode.practice)
+                  _buildOfflineOverlay(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOfflineOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.8),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.signal_wifi_off,
+              size: 60,
+              color: Colors.orangeAccent,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "CONNECTION LOST",
+              style: GoogleFonts.orbitron(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.orangeAccent,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Game Paused. Waiting for Agent...",
+              style: GoogleFonts.robotoMono(color: Colors.white70),
+            ),
+            const SizedBox(height: 20),
+            // Retry is automatic via Service, but visual feedback helps
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.orangeAccent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExitDialog(BuildContext context, String title) {
+    return AlertDialog(
+      backgroundColor: Colors.black,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Colors.redAccent),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      title: Text(title, style: GoogleFonts.orbitron(color: Colors.white)),
+      content: Text(
+        "Current progress will be lost.",
+        style: GoogleFonts.robotoMono(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text("CANCEL"),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(
+            "EXIT",
+            style: GoogleFonts.orbitron(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

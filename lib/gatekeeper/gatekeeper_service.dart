@@ -7,6 +7,7 @@ import 'gatekeeper_result.dart';
 /// Service to handle Gatekeeper checks (Child Agent status)
 class GatekeeperService extends ChangeNotifier {
   bool _isSystemOnline = true;
+  bool _disposed = false;
 
   // Realtime monitoring
   StreamSubscription<DocumentSnapshot>? _realtimeListener;
@@ -14,10 +15,15 @@ class GatekeeperService extends ChangeNotifier {
 
   bool get isSystemOnline => _isSystemOnline;
   bool get isRealtimeActive => _isRealtimeActive;
-  bool get isGatekeeperConnected => hasActiveAuthSession && isRealtimeActive;
+  bool get isGatekeeperConnected => isRealtimeActive;
 
-  bool get hasActiveAuthSession =>
-      FirebaseAuth.instance.currentUser != null;
+  bool get hasActiveAuthSession {
+    try {
+      return FirebaseAuth.instance.currentUser != null;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Checks if the Child Agent is active.
   /// Returns a GatekeeperResult with specific result code
@@ -153,7 +159,56 @@ class GatekeeperService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     stopRealtimeMonitoring();
     super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) {
+      super.notifyListeners();
+    }
+  }
+
+  /// Checks if the provided [userId] is present in the whitelist.
+  ///
+  /// It checks `config/whitelist` document in Firestore.
+  Future<bool> isUserAllowed(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('whitelist')
+          .get();
+
+      if (!doc.exists || doc.data() == null) {
+        debugPrint('Gatekeeper: Whitelist document not found or empty.');
+        // Fail safe: valid users must be whitelisted.
+        return false;
+      }
+
+      final data = doc.data()!;
+
+      // Strict check: Iterate through all values in the document.
+      for (final value in data.values) {
+        // Direct value match
+        if (value.toString() == userId) {
+          return true;
+        }
+
+        // List field match
+        if (value is List) {
+          if (value.any((element) => element.toString() == userId)) {
+            return true;
+          }
+        }
+      }
+
+      debugPrint('Gatekeeper: Access denied for $userId');
+      return false;
+    } catch (e) {
+      debugPrint('Gatekeeper Error: $e');
+      return false;
+    }
   }
 }
