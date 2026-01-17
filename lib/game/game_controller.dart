@@ -70,6 +70,18 @@ class GameController extends ChangeNotifier {
   List<RoomPlayer> get roomPlayers => _roomPlayers;
   bool get matchEnded => _matchEnded;
 
+  // Game Rule State Flags
+  bool _canRoll = true;
+  bool _canEndTurn = false;
+  bool _actionTakenThisTurn = false;
+  bool _isMoving = false;
+
+  // Getters for Rule Enforcement
+  bool get canRoll => _canRoll && !matchEnded && !_isMoving;
+  bool get canEndTurn => _canEndTurn && !matchEnded && !_isMoving;
+  bool get actionTakenThisTurn => _actionTakenThisTurn;
+  bool get isMoving => _isMoving;
+
   GameController(
     this._gatekeeper, {
     required String parentId,
@@ -392,6 +404,7 @@ class GameController extends ChangeNotifier {
   // Phase 17: Interactive Dice Charge
   void startDiceCharge() {
     if (isMultiplayer && !_isMyTurn) return;
+    if (!canRoll) return; // Use the new getter
     _dicePressStart = DateTime.now();
   }
 
@@ -415,7 +428,7 @@ class GameController extends ChangeNotifier {
   }
 
   Future<void> rollDice({double gaugeValue = 0.5}) async {
-    if (_isDisposed || _matchEnded) return;
+    if (_isDisposed || _matchEnded || !canRoll) return; // Use the new getter
 
     // Phase 16: Check if it's my turn in multiplayer mode
     if (isMultiplayer && !_isMyTurn) {
@@ -424,14 +437,23 @@ class GameController extends ChangeNotifier {
       return;
     }
 
+    _canRoll = false; // Lock rolling
+    _isMoving = true;
+    _actionTakenThisTurn = false; // Reset for new turn
+
     // Phase 5: Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
       _currentParentId,
       _currentChildId,
     );
-    if (_isDisposed || _matchEnded) return;
+    if (_isDisposed || _matchEnded) {
+      _isMoving = false;
+      return;
+    }
     if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
+      _canRoll = true; // Allow retry if offline
+      _isMoving = false;
       _safeNotifyListeners();
       return;
     }
@@ -440,60 +462,54 @@ class GameController extends ChangeNotifier {
     _diceRoll = 0; // Reset logic for Animation Detection
     _safeNotifyListeners();
 
-    // CRITICAL: Yield to event loop to ensure UI rebuilds with 0 state
-    // This guarantees the next update (even if same number) is seen as a change.
     await Future.delayed(const Duration(milliseconds: 100));
-    if (_isDisposed || _matchEnded) return;
+    if (_isDisposed || _matchEnded) {
+      _isMoving = false;
+      return;
+    }
 
-    // Interactive Roll Logic (KISS: Simple bias)
+    // Interactive Roll Logic
     int roll;
     if (gaugeValue < 0.4) {
-      // Bias towards Low (1-3)
-      // 70% chance of 1-3, 30% chance of 4-6
       bool hit = Random().nextDouble() < 0.7;
       roll = hit ? (Random().nextInt(3) + 1) : (Random().nextInt(3) + 4);
     } else if (gaugeValue > 0.6) {
-      // Bias towards High (4-6)
       bool hit = Random().nextDouble() < 0.7;
       roll = hit ? (Random().nextInt(3) + 4) : (Random().nextInt(3) + 1);
     } else {
-      // Pure Random
       roll = Random().nextInt(6) + 1;
     }
 
     _diceRoll = roll;
-    _safeNotifyListeners(); // Show Dice Result (Animation stops rolling and shows number)
+    _safeNotifyListeners();
 
-    // Give user time to see the dice result before moving (sync with DiceAnimation duration)
-    // DiceAnimation takes ~1s to show result then callback.
-    // We wait 1.5s here to be safe.
     await Future.delayed(const Duration(milliseconds: 1500));
 
     // Move Step-by-Step
     await _moveCurrentPlayer(_diceRoll);
 
-    // Wait a tiny bit after last move before landing logic
     await Future.delayed(const Duration(milliseconds: 200));
-    if (_isDisposed || _matchEnded) return;
+    if (_isDisposed || _matchEnded) {
+      _isMoving = false;
+      return;
+    }
 
-    _handleTileLanding(); // Updates local object state
+    _handleTileLanding();
 
     // SYNC TO SUPABASE (Only if not practice)
     if (gameMode != GameMode.practice) {
       await _supabase.upsertPlayer(currentPlayer);
     }
-    if (_isDisposed || _matchEnded) return;
+
+    _isMoving = false;
+    _canEndTurn = true; // Allow ending turn after landing
+    _safeNotifyListeners();
 
     // Autosave (non-match progress only)
     await autosave();
-    if (_isDisposed || _matchEnded) return;
 
     // Check game over
     await _checkGameOverCondition();
-
-    if (!_matchEnded && !_isDisposed) {
-      _nextTurn();
-    }
   }
 
   Future<void> _moveCurrentPlayer(int steps) async {
@@ -531,10 +547,18 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  void endTurn() {
+    if (!canEndTurn) return; // Use the new getter
+    _nextTurn();
+  }
+
   void _nextTurn() {
-    // TODO: Sync Turn Index to DB if we want strict turn enforcement.
+    _canEndTurn = false;
+    _actionTakenThisTurn = false;
+    _canRoll = true;
+
     _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.length;
-    notifyListeners();
+    _safeNotifyListeners();
 
     // AI Turn Logic
     if (!_players[_currentPlayerIndex].isHuman) {
@@ -577,8 +601,13 @@ class GameController extends ChangeNotifier {
 
   /// Buy a property the player is currently on or specified by ID
   Future<void> buyProperty(int tileId) async {
+    if (_actionTakenThisTurn) return;
+
     // Convert tileId to nodeId
     String nodeId = 'node_$tileId';
+
+    // Must be on the tile
+    if (currentPlayer.nodeId != nodeId) return;
 
     // Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
@@ -587,7 +616,7 @@ class GameController extends ChangeNotifier {
     );
     if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
@@ -596,12 +625,13 @@ class GameController extends ChangeNotifier {
 
     if (currentPlayer.credits >= prop.baseValue) {
       currentPlayer.credits -= prop.baseValue;
-      _lastEffectMessage = "${currentPlayer.name} purchased Node $tileId!";
+      _actionTakenThisTurn = true;
+      _lastEffectMessage = "Purchased ${prop.nodeId}!";
 
       // Update local state
       _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
 
-      notifyListeners();
+      _safeNotifyListeners();
 
       // Sync Player (Credits) and Property (Owner)
       if (gameMode != GameMode.practice) {
@@ -609,14 +639,18 @@ class GameController extends ChangeNotifier {
         await _supabase.upsertProperty(tileId, currentPlayer.id, 0);
       }
     } else {
-      _lastEffectMessage = "Insufficient Credits to buy!";
-      notifyListeners();
+      _lastEffectMessage = "Insufficient Credits!";
+      _safeNotifyListeners();
     }
   }
 
   /// Upgrade a property (Tycoon Mechanic)
   Future<void> buyPropertyUpgrade(int tileId) async {
+    if (_actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
+
+    // Must be on the tile
+    if (currentPlayer.nodeId != nodeId) return;
 
     // Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
@@ -625,7 +659,7 @@ class GameController extends ChangeNotifier {
     );
     if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
@@ -633,45 +667,54 @@ class GameController extends ChangeNotifier {
     if (prop == null) return;
 
     if (prop.ownerId != currentPlayer.id) {
-      _lastEffectMessage = "You don't own this property!";
-      notifyListeners();
+      _lastEffectMessage = "You don't own this!";
+      _safeNotifyListeners();
       return;
     }
 
-    // Limit building level
-    if (prop.buildingLevel >= 3) {
-      _lastEffectMessage = "Property at Max Building Level!";
-      // TODO: Implement Landmark Level 4 logic later
-      notifyListeners();
+    // Limit building level (Max 4 for Landmark)
+    if (prop.buildingLevel >= 4 || prop.hasLandmark) {
+      _lastEffectMessage = "Landmark Reached!";
+      _safeNotifyListeners();
       return;
     }
 
-    // Logic for cost
     int cost = prop.upgradeCost;
 
     if (currentPlayer.credits >= cost) {
       currentPlayer.credits -= cost;
+      _actionTakenThisTurn = true;
       final newLevel = prop.buildingLevel + 1;
+      final isLandmark = newLevel >= 4;
 
       // Update local
-      _properties[nodeId] = prop.copyWith(buildingLevel: newLevel);
+      _properties[nodeId] = prop.copyWith(
+        buildingLevel: newLevel,
+        hasLandmark: isLandmark,
+      );
 
-      _lastEffectMessage = "Upgraded to Lv $newLevel!";
-      notifyListeners();
+      _lastEffectMessage = isLandmark
+          ? "LANDMARK BUILT!"
+          : "Upgraded to Lv $newLevel!";
+      _safeNotifyListeners();
 
       if (gameMode != GameMode.practice) {
         await _supabase.upsertPlayer(currentPlayer);
         await _supabase.upsertProperty(tileId, currentPlayer.id, newLevel);
       }
     } else {
-      _lastEffectMessage = "Need $cost Credits to upgrade!";
-      notifyListeners();
+      _lastEffectMessage = "Need $cost Credits!";
+      _safeNotifyListeners();
     }
   }
 
   /// Takeover a property from another player (Hostile Takeover)
   Future<void> buyPropertyTakeover(int tileId) async {
+    if (_actionTakenThisTurn) return;
     String nodeId = 'node_$tileId';
+
+    // Must be on the tile
+    if (currentPlayer.nodeId != nodeId) return;
 
     // Check Gatekeeper
     final result = await _gatekeeper.isChildAgentActive(
@@ -680,7 +723,7 @@ class GameController extends ChangeNotifier {
     );
     if (!result.isSuccess) {
       _lastEffectMessage = "ACCESS DENIED: Child Agent Offline";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
@@ -689,22 +732,20 @@ class GameController extends ChangeNotifier {
 
     if (prop.ownerId == currentPlayer.id) {
       _lastEffectMessage = "You already own this!";
-      notifyListeners();
+      _safeNotifyListeners();
       return;
     }
 
-    if (prop.hasLandmark) {
-      _lastEffectMessage = "Cannot takeover a Landmark!";
-      notifyListeners();
+    if (prop.hasLandmark || prop.buildingLevel >= 4) {
+      _lastEffectMessage = "Landmark Locked!";
+      _safeNotifyListeners();
       return;
     }
 
     int cost = prop.takeoverCost;
 
     if (currentPlayer.credits >= cost) {
-      // 1. Pay previous owner (Optional rule: 2x value goes to owner)
-      // For now, we deduct from current player and give half to previous owner?
-      // Or full 2x to previous owner? Let's give full 2x to previous owner for fairness.
+      _actionTakenThisTurn = true;
       Player? previousOwner = _players.cast<Player?>().firstWhere(
         (p) => p?.id == prop.ownerId,
         orElse: () => null,
@@ -713,16 +754,17 @@ class GameController extends ChangeNotifier {
       currentPlayer.credits -= cost;
       if (previousOwner != null) {
         previousOwner.credits += cost;
-        // Sync previous owner too
-        await _supabase.upsertPlayer(previousOwner);
+        if (gameMode != GameMode.practice) {
+          await _supabase.upsertPlayer(previousOwner);
+        }
       }
 
-      _lastEffectMessage = "Hostile Takeover Successful!";
+      _lastEffectMessage = "Takeover Successful!";
 
       // 2. Transfer Ownership
       _properties[nodeId] = prop.copyWith(ownerId: currentPlayer.id);
 
-      notifyListeners();
+      _safeNotifyListeners();
 
       // 3. Sync
       if (gameMode != GameMode.practice) {
@@ -734,9 +776,8 @@ class GameController extends ChangeNotifier {
         );
       }
     } else {
-      _lastEffectMessage = "Need $cost Credits for Takeover!";
-      notifyListeners();
-      return;
+      _lastEffectMessage = "Need $cost Credits!";
+      _safeNotifyListeners();
     }
   }
 
@@ -746,8 +787,6 @@ class GameController extends ChangeNotifier {
     if (node == null) return;
 
     final int multiplier = currentPlayer.scoreMultiplier;
-
-    // Reset temporary state
     _currentEventCard = null;
 
     switch (node.type) {
@@ -755,15 +794,15 @@ class GameController extends ChangeNotifier {
         currentPlayer.score += (200 * multiplier);
         currentPlayer.credits += 100;
         _lastEffectMessage =
-            "Passed Go! +${200 * multiplier} Score, +100 Credits";
+            "Recouped! +${200 * multiplier} Score, +100 Credits";
         break;
-      case NodeType.minigame: // Mapped to Reward
+      case NodeType.minigame:
         int reward = 200 * multiplier;
         currentPlayer.credits += reward;
         currentPlayer.score += 100 * multiplier;
         _lastEffectMessage = "Dark Web Loot! +$reward Credits";
         break;
-      case NodeType.prison: // Mapped to Penalty
+      case NodeType.prison:
         int penalty = 150 * multiplier;
         currentPlayer.credits = max(0, currentPlayer.credits - penalty);
         currentPlayer.score = max(0, currentPlayer.score - 50);
@@ -776,21 +815,26 @@ class GameController extends ChangeNotifier {
         PropertyDetails? prop = _properties[currentId];
         if (prop != null) {
           if (prop.ownerId == null) {
-            _lastEffectMessage = "Property For Sale: ${prop.baseValue} Credits";
+            _lastEffectMessage = "Node For Sale: ${prop.baseValue} Credits";
           } else if (prop.ownerId != currentPlayer.id) {
-            // Pay Rent
             final rent = prop.currentRent * multiplier;
+            // Immediate Payment Rule
             currentPlayer.credits = max(0, currentPlayer.credits - rent);
-            _lastEffectMessage = "Paid Rent: $rent to Owner";
+
+            // Give credits to owner
+            final owner = _players.firstWhere((p) => p.id == prop.ownerId);
+            owner.credits += rent;
+
+            _lastEffectMessage = "Paid Toll: $rent Credits";
           } else {
-            _lastEffectMessage = "Welcome back to your node.";
+            _lastEffectMessage = "Welcome back to your Node.";
           }
         }
         break;
       default:
         break;
     }
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _handleEventCardLanding() {
@@ -931,16 +975,6 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Check if player has lost (credits <= 0 and can't recover)
-  bool _checkGameOver() {
-    for (final player in _players) {
-      if (player.credits <= 0 && player.score <= 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   /// Handle game end: Update ranks and record match result
   Future<void> endGame({String? winnerId}) async {
     if (_matchEnded) return;
@@ -992,9 +1026,35 @@ class GameController extends ChangeNotifier {
 
   /// Check game over condition after each turn
   Future<void> _checkGameOverCondition() async {
-    if (_checkGameOver()) {
-      final winner = _players.reduce((a, b) => a.score > b.score ? a : b);
-      await endGame(winnerId: winner.id);
+    if (_matchEnded) return;
+
+    bool gameOver = false;
+    String? winnerId;
+
+    // Condition 1: Bankruptcy (Credit <= 0)
+    if (gameMode == GameMode.practice) {
+      // Practice: Continue or End on target score
+      if (_players.any((p) => p.score >= 5000)) {
+        gameOver = true;
+        winnerId = _players.reduce((a, b) => a.score > b.score ? a : b).id;
+      }
+    } else {
+      // Ranked/Online: End if only one player with credits remains
+      final activePlayers = _players.where((p) => p.credits > 0).toList();
+      if (activePlayers.length <= 1) {
+        gameOver = true;
+        winnerId = activePlayers.isNotEmpty ? activePlayers.first.id : null;
+      }
+
+      // OR reach max score
+      if (_players.any((p) => p.score >= 10000)) {
+        gameOver = true;
+        winnerId = _players.reduce((a, b) => a.score > b.score ? a : b).id;
+      }
+    }
+
+    if (gameOver) {
+      await endGame(winnerId: winnerId);
     }
   }
 }

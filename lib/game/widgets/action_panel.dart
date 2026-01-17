@@ -10,10 +10,12 @@ class ActionPanel extends StatelessWidget {
   final bool canBuyProperty;
   final bool canUpgradeProperty;
   final bool canTakeoverProperty;
+  final bool canEndTurn;
   final Function(double) onRollDice;
   final VoidCallback onBuyProperty;
   final VoidCallback onUpgradeProperty;
   final VoidCallback onTakeoverProperty;
+  final VoidCallback onEndTurn;
   final VoidCallback onSaveGame;
   final VoidCallback onLoadGame;
   final bool showSaveLoad;
@@ -26,10 +28,12 @@ class ActionPanel extends StatelessWidget {
     required this.canBuyProperty,
     required this.canUpgradeProperty,
     this.canTakeoverProperty = false,
+    required this.canEndTurn,
     required this.onRollDice,
     required this.onBuyProperty,
     required this.onUpgradeProperty,
     required this.onTakeoverProperty,
+    required this.onEndTurn,
     required this.onSaveGame,
     required this.onLoadGame,
     this.showSaveLoad = true,
@@ -56,7 +60,24 @@ class ActionPanel extends StatelessWidget {
         children: [
           // DICE ACTION
           if (isMyTurn && isAgentActive && !isLoading)
-            HoldToRollButton(key: const Key('gauge_roll'), onRoll: onRollDice)
+            Column(
+              children: [
+                if (!canEndTurn)
+                  HoldToRollButton(
+                    key: const Key('gauge_roll'),
+                    onRoll: onRollDice,
+                  )
+                else
+                  _buildActionButton(
+                    key: const Key('btn_end_turn'),
+                    label: 'END TURN',
+                    icon: Icons.done_all,
+                    enabled: true,
+                    onPressed: onEndTurn,
+                    color: Colors.cyanAccent,
+                  ),
+              ],
+            )
           else
             _buildActionButton(
               key: const Key('btn_roll_disabled'),

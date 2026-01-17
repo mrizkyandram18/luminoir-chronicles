@@ -43,7 +43,7 @@ class PropertyDetails {
     // Rent Formula: Base + (Base * BuildingMultiplier * Level)
     double multiplier = 1.0;
 
-    if (hasLandmark) {
+    if (hasLandmark || buildingLevel >= 4) {
       multiplier = 8.0; // Massive rent for Landmarks
     } else {
       // Land(0): 1x, B1(1): 2x, B2(2): 3x, B3(3): 4x
@@ -56,14 +56,18 @@ class PropertyDetails {
   /// Cost to construct the next upgrade
   int get upgradeCost {
     // Simplified: Upgrade cost is 50% of base land value
+    // Landmark (Level 4) might be more expensive
+    if (buildingLevel >= 3) return baseValue;
     return (baseValue * 0.5).round();
   }
 
   /// Cost to takeover this property from an opponent
   /// Usually 2x the total current value
   int get takeoverCost {
+    if (hasLandmark || buildingLevel >= 4) {
+      return 9999999; // Effectively unstealable
+    }
     int totalValue = baseValue + (upgradeCost * buildingLevel);
-    if (hasLandmark) totalValue += (upgradeCost * 2); // Landmark is expensive
     return totalValue * 2;
   }
 }

@@ -99,24 +99,94 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
                   child: SizedBox(
                     width: 400,
                     child: Consumer<GameController>(
-                      builder: (_, ctrl, _) => ActionPanel(
-                        isMyTurn: ctrl.isMyTurn,
-                        isAgentActive: true,
-                        canBuyProperty: _canBuyProperty(ctrl),
-                        canUpgradeProperty: _canUpgradeProperty(ctrl),
-                        canTakeoverProperty: _canTakeoverProperty(ctrl),
-                        isLoading: _isRolling,
-                        onRollDice: (val) =>
-                            _handleRollDice(context, ctrl, val),
-                        onBuyProperty: () => _handleBuyProperty(context, ctrl),
-                        onUpgradeProperty: () =>
-                            _handleUpgradeProperty(context, ctrl),
-                        onTakeoverProperty: () =>
-                            _handleTakeoverProperty(context, ctrl),
-                        onSaveGame: () => _handleSaveGame(context, ctrl),
-                        onLoadGame: () => _handleLoadGame(context, ctrl),
-                        showSaveLoad: ctrl.gameMode == GameMode.practice,
-                      ),
+                      builder: (_, ctrl, _) {
+                        final currentTile =
+                            ctrl.tiles[ctrl.currentPlayer.position];
+                        return ActionPanel(
+                          isMyTurn: ctrl.isMyTurn,
+                          isAgentActive: true,
+                          canEndTurn: ctrl.canEndTurn,
+                          canBuyProperty:
+                              currentTile.type == TileType.property &&
+                              currentTile.ownerId == null &&
+                              ctrl.currentPlayer.credits >= currentTile.value &&
+                              !ctrl.actionTakenThisTurn,
+                          canUpgradeProperty:
+                              currentTile.type == TileType.property &&
+                              currentTile.ownerId == ctrl.currentPlayer.id &&
+                              ctrl.currentPlayer.credits >=
+                                  (currentTile.value * 0.5).round() &&
+                              currentTile.upgradeLevel < 4 &&
+                              !ctrl.actionTakenThisTurn,
+                          canTakeoverProperty:
+                              currentTile.type == TileType.property &&
+                              currentTile.ownerId != null &&
+                              currentTile.ownerId != ctrl.currentPlayer.id &&
+                              ctrl.currentPlayer.credits >=
+                                  (currentTile.value * 2) &&
+                              currentTile.upgradeLevel < 4 &&
+                              !ctrl.actionTakenThisTurn,
+                          isLoading: _isRolling,
+                          onRollDice: (gauge) async {
+                            setState(() => _isRolling = true);
+                            await ctrl.rollDice(gaugeValue: gauge);
+                            if (context.mounted &&
+                                ctrl.currentEventCard != null) {
+                              _showEventCardDialog(context, ctrl);
+                            }
+                            if (context.mounted &&
+                                ctrl.lastEffectMessage != null) {
+                              _showSnackBar(
+                                context,
+                                ctrl.lastEffectMessage!,
+                                ctrl.currentPlayer.color,
+                              );
+                            }
+                            if (mounted) setState(() => _isRolling = false);
+                          },
+                          onBuyProperty: () async {
+                            await ctrl.buyProperty(ctrl.currentPlayer.position);
+                            if (context.mounted &&
+                                ctrl.lastEffectMessage != null) {
+                              _showSnackBar(
+                                context,
+                                ctrl.lastEffectMessage!,
+                                Colors.greenAccent,
+                              );
+                            }
+                          },
+                          onUpgradeProperty: () async {
+                            await ctrl.buyPropertyUpgrade(
+                              ctrl.currentPlayer.position,
+                            );
+                            if (context.mounted &&
+                                ctrl.lastEffectMessage != null) {
+                              _showSnackBar(
+                                context,
+                                ctrl.lastEffectMessage!,
+                                Colors.blueAccent,
+                              );
+                            }
+                          },
+                          onTakeoverProperty: () async {
+                            await ctrl.buyPropertyTakeover(
+                              ctrl.currentPlayer.position,
+                            );
+                            if (context.mounted &&
+                                ctrl.lastEffectMessage != null) {
+                              _showSnackBar(
+                                context,
+                                ctrl.lastEffectMessage!,
+                                Colors.redAccent,
+                              );
+                            }
+                          },
+                          onEndTurn: () => ctrl.endTurn(),
+                          onSaveGame: () => ctrl.saveGame(),
+                          onLoadGame: () => ctrl.loadGame(),
+                          showSaveLoad: ctrl.gameMode == GameMode.practice,
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -248,194 +318,6 @@ class _GameBoardScreenEnhancedState extends State<GameBoardScreenEnhanced> {
   }
 
   // Helper Methods
-  bool _canBuyProperty(GameController controller) {
-    final currentTile = controller.tiles[controller.currentPlayer.position];
-    return currentTile.type == TileType.property && currentTile.ownerId == null;
-  }
-
-  bool _canUpgradeProperty(GameController controller) {
-    final currentTile = controller.tiles[controller.currentPlayer.position];
-    return currentTile.type == TileType.property &&
-        currentTile.ownerId == controller.currentPlayer.id;
-  }
-
-  bool _canTakeoverProperty(GameController controller) {
-    final currentTile = controller.tiles[controller.currentPlayer.position];
-    if (currentTile.type != TileType.property || currentTile.ownerId == null) {
-      return false;
-    }
-    // Cannot takeover own property
-    if (currentTile.ownerId == controller.currentPlayer.id) return false;
-
-    // Check credits (Approximate calculation for UI)
-    // Real validation happens in controller
-    int baseValue = currentTile.value;
-    int upgradeCost = (baseValue * 0.5).round();
-    int totalValue = baseValue + (upgradeCost * currentTile.upgradeLevel);
-    int estimatedCost = totalValue * 2;
-
-    return controller.currentPlayer.credits >= estimatedCost;
-  }
-
-  // Action Handlers
-  Future<void> _handleRollDice(
-    BuildContext context,
-    GameController controller,
-    double gaugeValue,
-  ) async {
-    // 1. Start Rolling Animation
-    setState(() {
-      _isRolling = true;
-    });
-
-    // Trigger Controller
-    await controller.rollDice(gaugeValue: gaugeValue);
-
-    // Show Event Card if triggered
-    if (context.mounted && controller.currentEventCard != null) {
-      _showEventCardDialog(context, controller);
-    }
-
-    // Show effect message
-    if (context.mounted && controller.lastEffectMessage != null) {
-      _showSnackBar(
-        context,
-        controller.lastEffectMessage!,
-        controller.currentPlayer.color,
-      );
-    }
-  }
-
-  Future<void> _handleBuyProperty(
-    BuildContext context,
-    GameController controller,
-  ) async {
-    await controller.buyProperty(controller.currentPlayer.position);
-    if (context.mounted && controller.lastEffectMessage != null) {
-      _showSnackBar(context, controller.lastEffectMessage!, Colors.greenAccent);
-    }
-  }
-
-  Future<void> _handleUpgradeProperty(
-    BuildContext context,
-    GameController controller,
-  ) async {
-    await controller.buyPropertyUpgrade(controller.currentPlayer.position);
-    if (context.mounted && controller.lastEffectMessage != null) {
-      _showSnackBar(
-        context,
-        controller.lastEffectMessage!,
-        Colors.purpleAccent,
-      );
-    }
-  }
-
-  Future<void> _handleTakeoverProperty(
-    BuildContext context,
-    GameController controller,
-  ) async {
-    // 1. Calculate Cost (Approximate for Dialog)
-    final currentTile = controller.tiles[controller.currentPlayer.position];
-    int baseValue = currentTile.value;
-    int upgradeCost = (baseValue * 0.5).round();
-    int totalValue = baseValue + (upgradeCost * currentTile.upgradeLevel);
-    int estimatedCost = totalValue * 2;
-
-    // 2. Show Confirmation Dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.redAccent, width: 2),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          "HOSTILE TAKEOVER",
-          style: GoogleFonts.orbitron(
-            color: Colors.redAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Seize this property logic?",
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "COST: $estimatedCost CREDITS",
-              style: GoogleFonts.orbitron(
-                color: Colors.yellowAccent,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "(2x Property Value paid to owner)",
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text("CANCEL", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              "INITIATE TAKEOVER",
-              style: GoogleFonts.orbitron(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await controller.buyPropertyTakeover(controller.currentPlayer.position);
-      if (context.mounted && controller.lastEffectMessage != null) {
-        _showSnackBar(context, controller.lastEffectMessage!, Colors.redAccent);
-      }
-    }
-  }
-
-  Future<void> _handleSaveGame(
-    BuildContext context,
-    GameController controller,
-  ) async {
-    await controller.saveGame();
-    if (context.mounted && controller.lastEffectMessage != null) {
-      _showSnackBar(
-        context,
-        controller.lastEffectMessage!,
-        Colors.orangeAccent,
-      );
-    }
-  }
-
-  Future<void> _handleLoadGame(
-    BuildContext context,
-    GameController controller,
-  ) async {
-    await controller.loadGame();
-    if (context.mounted && controller.lastEffectMessage != null) {
-      _showSnackBar(
-        context,
-        controller.lastEffectMessage!,
-        Colors.orangeAccent,
-      );
-    }
-  }
-
   void _showEventCardDialog(BuildContext context, GameController controller) {
     final card = controller.currentEventCard!;
     showDialog(
