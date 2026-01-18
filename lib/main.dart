@@ -22,11 +22,14 @@ import 'game/raid/screens/feature_placeholder_screen.dart';
 import 'game/raid/screens/summon_screen.dart';
 import 'game/raid/screens/ninja_screen.dart';
 
+import 'package:device_preview/device_preview.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (kDebugMode) {
-    debugPaintSizeEnabled = true;
+    debugPaintSizeEnabled =
+        false; // Disable debug paint as DevicePreview handles visual debugging
   }
 
   await SystemChrome.setPreferredOrientations([
@@ -57,13 +60,16 @@ void main() async {
   }
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => GatekeeperService()),
-        ChangeNotifierProvider(create: (_) => GameIdentityService()),
-        Provider<SupabaseService>(create: (_) => SupabaseService()),
-      ],
-      child: const CyberTycoonApp(),
+    DevicePreview(
+      enabled: true, // Enabled for debugging responsive issues
+      builder: (context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => GatekeeperService()),
+          ChangeNotifierProvider(create: (_) => GameIdentityService()),
+          Provider<SupabaseService>(create: (_) => SupabaseService()),
+        ],
+        child: const CyberTycoonApp(),
+      ),
     ),
   );
 }
@@ -74,12 +80,14 @@ class CyberTycoonApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (kDebugMode) {
-      final size = MediaQuery.of(context).size;
-      debugPrint('CyberTycoonApp screen size: ${size.width} x ${size.height}');
+      // In DevicePreview, this MediaQuery might return the simulated device size
+      // We can also check specific metrics here if needed
     }
     return MaterialApp.router(
       title: 'Cyber Raid',
       debugShowCheckedModeBanner: false,
+      locale: DevicePreview.locale(context), // Required for DevicePreview
+      builder: DevicePreview.appBuilder, // Required for DevicePreview
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
         textTheme: GoogleFonts.robotoTextTheme(
@@ -118,8 +126,7 @@ final _router = GoRouter(
         final extra = state.extra as Map<String, dynamic>? ?? {};
         final childId = extra['childId'] as String? ?? '';
         final job = extra['job'] as PlayerJob? ?? PlayerJob.warrior;
-        final openInventory =
-            extra['openInventoryOnStart'] as bool? ?? false;
+        final openInventory = extra['openInventoryOnStart'] as bool? ?? false;
         return RaidScreen(
           myPlayerId: childId,
           myJob: job,
@@ -148,12 +155,10 @@ final _router = GoRouter(
       builder: (context, state) {
         final extra = state.extra as Map<String, String>? ?? {};
         final title = extra['title'] ?? 'Feature';
-        final description = extra['description'] ??
+        final description =
+            extra['description'] ??
             'Fitur ini akan segera hadir di Cyber Raid.';
-        return FeaturePlaceholderScreen(
-          title: title,
-          description: description,
-        );
+        return FeaturePlaceholderScreen(title: title, description: description);
       },
     ),
     GoRoute(

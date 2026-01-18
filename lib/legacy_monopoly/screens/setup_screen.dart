@@ -112,10 +112,11 @@ class _SetupScreenState extends State<SetupScreen> {
   @override
   Widget build(BuildContext context) {
     debugPrint("=== Debugging SetupScreen ===");
-    final size = MediaQuery.sizeOf(context);
-    final padding = MediaQuery.paddingOf(context);
-    debugPrint("Screen Size: $size");
-    debugPrint("Screen Padding: $padding");
+    final mq = MediaQuery.of(context);
+    debugPrint("Screen Size: ${mq.size}");
+    debugPrint("Screen Padding: ${mq.padding}");
+    // ignore: deprecated_member_use
+    debugPrint("TextScale: ${mq.textScaleFactor}");
 
     return Scaffold(
       backgroundColor: boardBeige,
