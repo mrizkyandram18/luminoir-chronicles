@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/models/room_model.dart';
-import 'package:cyber_tycoon/game/game_controller.dart';
-import 'package:cyber_tycoon/game/supabase_service.dart';
-import 'package:cyber_tycoon/game/services/multiplayer_service.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_service.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_result.dart';
-import 'package:cyber_tycoon/game/models/player_model.dart';
+import 'package:cyber_raid/game/models/room_model.dart';
+import 'package:cyber_raid/game/game_controller.dart';
+import 'package:cyber_raid/game/supabase_service.dart';
+import 'package:cyber_raid/game/services/multiplayer_service.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_service.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_result.dart';
+import 'package:cyber_raid/game/models/player_model.dart';
 import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

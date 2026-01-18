@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:cyber_tycoon/main.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_service.dart';
+import 'package:cyber_raid/main.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_service.dart';
 import 'package:mockito/mockito.dart';
 
 // Internal Mock

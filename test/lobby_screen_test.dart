@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/screens/lobby_screen.dart';
-import 'package:cyber_tycoon/game/services/multiplayer_service.dart';
+import 'package:cyber_raid/game/screens/lobby_screen.dart';
+import 'package:cyber_raid/game/services/multiplayer_service.dart';
 import 'package:mockito/mockito.dart';
 
 class MockMultiplayerService extends Mock implements MultiplayerService {}

@@ -1,43 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 import 'gatekeeper/gatekeeper_service.dart';
 import 'gatekeeper/screens/access_denied_screen.dart';
 import 'gatekeeper/screens/splash_screen.dart';
-import 'game/screens/main_menu.dart';
-// import 'game/game_controller.dart'; // No longer needed here
-// import 'game/screens/game_board_screen.dart'; // Managed by SetupScreen
-import 'game/screens/setup_screen.dart';
 import 'game_identity/game_identity_service.dart';
+import 'legacy_monopoly/screens/setup_screen.dart';
+import 'services/supabase_service.dart';
+import 'game/raid/models/raid_player.dart';
+import 'game/raid/screens/character_select_screen.dart';
+import 'game/raid/screens/main_menu_screen.dart';
+import 'game/raid/screens/raid_screen.dart';
+import 'game/raid/screens/feature_placeholder_screen.dart';
+import 'game/raid/screens/summon_screen.dart';
+import 'game/raid/screens/ninja_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enforce Landscape Mode
+  if (kDebugMode) {
+    debugPaintSizeEnabled = true;
+  }
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
 
-  // Initialize Supabase
-  // TODO: Replace with your actual Supabase URL and Anon Key
   await Supabase.initialize(
     url: 'https://hmrkssfhcxlvjzyigufd.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhtcmtzc2ZoY3hsdmp6eWlndWZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1NTE3NzcsImV4cCI6MjA4NDEyNzc3N30.svgZlN95pJEzRvh4RtOhL_1J99o4a21LrUiT72B8p-w',
   );
 
-  // ...
-
-  // Initialize Firebase
   if (kIsWeb) {
-    // WEB: Requires manual configuration
     await Firebase.initializeApp(
       options: const FirebaseOptions(
         apiKey: "AIzaSyAfZYncZK7p1BK_250h_Sh1nsbqfvE9uZM",
@@ -50,7 +53,6 @@ void main() async {
       ),
     );
   } else {
-    // ANDROID/iOS: Uses google-services.json / GoogleService-Info.plist
     await Firebase.initializeApp();
   }
 
@@ -59,6 +61,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => GatekeeperService()),
         ChangeNotifierProvider(create: (_) => GameIdentityService()),
+        Provider<SupabaseService>(create: (_) => SupabaseService()),
       ],
       child: const CyberTycoonApp(),
     ),
@@ -70,8 +73,12 @@ class CyberTycoonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) {
+      final size = MediaQuery.of(context).size;
+      debugPrint('CyberTycoonApp screen size: ${size.width} x ${size.height}');
+    }
     return MaterialApp.router(
-      title: 'Cyber Tycoon',
+      title: 'Cyber Raid',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
@@ -88,13 +95,64 @@ final _router = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/setup', builder: (context, state) => const SetupScreen()),
     GoRoute(
-      path: '/menu',
+      path: '/character-select',
       builder: (context, state) {
         final extra = state.extra as Map<String, String>?;
-        return MainMenuScreen(
-          parentId: extra?['parentId'] ?? '',
-          childId: extra?['childId'] ?? '',
+        final childId = extra?['childId'] ?? '';
+        return CharacterSelectScreen(childId: childId);
+      },
+    ),
+    GoRoute(
+      path: '/main-menu',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final childId = extra?['childId'] as String? ?? '';
+        return MainMenuScreen(childId: childId);
+      },
+    ),
+    GoRoute(
+      path: '/raid',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final childId = extra['childId'] as String? ?? '';
+        final job = extra['job'] as PlayerJob? ?? PlayerJob.warrior;
+        final openInventory =
+            extra['openInventoryOnStart'] as bool? ?? false;
+        return RaidScreen(
+          myPlayerId: childId,
+          myJob: job,
+          openInventoryOnStart: openInventory,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/summon',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final childId = extra['childId'] as String? ?? '';
+        return SummonScreen(childId: childId);
+      },
+    ),
+    GoRoute(
+      path: '/ninja',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final childId = extra['childId'] as String? ?? '';
+        return NinjaScreen(childId: childId);
+      },
+    ),
+    GoRoute(
+      path: '/feature',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, String>? ?? {};
+        final title = extra['title'] ?? 'Feature';
+        final description = extra['description'] ??
+            'Fitur ini akan segera hadir di Cyber Raid.';
+        return FeaturePlaceholderScreen(
+          title: title,
+          description: description,
         );
       },
     ),
@@ -105,6 +163,5 @@ final _router = GoRouter(
         return AccessDeniedScreen(reasonCode: reason);
       },
     ),
-    GoRoute(path: '/setup', builder: (context, state) => const SetupScreen()),
   ],
 );

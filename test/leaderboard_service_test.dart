@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/services/leaderboard_service.dart';
-import 'package:cyber_tycoon/game/models/player_model.dart';
-import 'package:cyber_tycoon/game/supabase_service.dart';
+import 'package:cyber_raid/game/services/leaderboard_service.dart';
+import 'package:cyber_raid/game/models/player_model.dart';
+import 'package:cyber_raid/game/supabase_service.dart';
 
 import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

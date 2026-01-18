@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/services/rank_service.dart';
-import 'package:cyber_tycoon/game/models/rank_tier.dart';
+import 'package:cyber_raid/game/services/rank_service.dart';
+import 'package:cyber_raid/game/models/rank_tier.dart';
 
 void main() {
   group('RankService', () {

@@ -36,20 +36,22 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(color: Colors.cyanAccent),
-            const SizedBox(height: 20),
-            Text(
-              'ESTABLISHING CONNECTION...',
-              style: GoogleFonts.orbitron(
-                color: Colors.cyanAccent,
-                letterSpacing: 2,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: Colors.cyanAccent),
+              const SizedBox(height: 20),
+              Text(
+                'ESTABLISHING CONNECTION...',
+                style: GoogleFonts.orbitron(
+                  color: Colors.cyanAccent,
+                  letterSpacing: 2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

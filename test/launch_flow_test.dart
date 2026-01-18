@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/bootstrap/launch_flow.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_result.dart';
+import 'package:cyber_raid/bootstrap/launch_flow.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_result.dart';
 
 void main() {
   group('LaunchDecision', () {

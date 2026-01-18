@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/screens/setup_screen.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_service.dart';
-import 'package:cyber_tycoon/gatekeeper/gatekeeper_result.dart';
-import 'package:cyber_tycoon/gatekeeper/screens/access_denied_screen.dart';
+import 'package:cyber_raid/game/screens/setup_screen.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_service.dart';
+import 'package:cyber_raid/gatekeeper/gatekeeper_result.dart';
+import 'package:cyber_raid/gatekeeper/screens/access_denied_screen.dart';
 import 'package:provider/provider.dart';
 
 class FakeGatekeeperInactive extends GatekeeperService {

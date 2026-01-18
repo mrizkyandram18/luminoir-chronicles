@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_tycoon/game/widgets/hud_overlay.dart';
-import 'package:cyber_tycoon/game/models/player_model.dart';
+import 'package:cyber_raid/game/widgets/hud_overlay.dart';
+import 'package:cyber_raid/game/models/player_model.dart';
 
 /// Unit tests for HudOverlay
 /// TDD: Verify player stats display and active player highlighting
