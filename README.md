@@ -1,143 +1,105 @@
 # Luminoir: Chronicles
 
-A web-first, isometric, story-driven board game built with Flutter with **live multiplayer** and **comprehensive animation system**.
+Multiplayer idle RPG raid prototype built with Flutter and Flame.
 
-## 🚀 Features
+Fokus project ini sekarang sudah tidak lagi di papan monopoli dan dadu,
+tetapi ke **raid boss RPG** dengan sistem Gatekeeper untuk anak.
 
-### Phase 1: Core Redesign (Graph & Dice) 🎲
-- **Graph-Based Board**: Replaced linear list with `BoardGraph` and `BoardNode` for complex pathing.
-- **Interactive Dice**: "Hold-to-Charge" mechanics for skill-based rolling (biased probability).
-- **Rich Properties**: `PropertyDetails` model supporting building levels and landmarks.
+## 🎮 Overview
 
-### Phase 1.1: Core Loop (Legacy)
-- **Isometric Board**: 2.5D visual style with neon aesthetics.
-- **Procedural Generation**: Rectangular path generation for 20 tiles.
-- **Dice Mechanics**: Animated roll and token movement.
+- Masuk lewat **Setup Screen** dengan `User ID` anak.
+- **GatekeeperService** cek:
+  - apakah anak di-whitelist,
+  - apakah layanan **Child Agent** dari orang tua sedang online,
+  - kalau tidak aktif, user dibawa ke **AccessDeniedScreen**.
+- Kalau semua aman, anak diarahkan ke:
+  - **Character Select** → pilih job,
+  - **Main Menu** → masuk raid, summon, dan fitur meta lain.
 
-### Phase 2: Tile Logic
-- **Tile Types**:
-  - 🟢 **Reward**: +Score, +Credits.
-  - 🔴 **Penalty**: -Score, -Credits.
-  - 🟣 **Event**: Random effects.
-  - ⚪ **Start**: Lap bonus.
-- **Visual Feedback**: Neon glows and snackbar alerts.
+Game loop utama saat ini:
 
-### START Tile & Lap Invariant 🏁
-- **Deterministic Bonuses**: START tile bonuses are never double-triggered.
-- **Passing START**: +200 Credits (Salary).
-- **Landing on START**: +100 Credits (Bonus).
-- **Pass + Land**: 300 Credits total in a single move.
-- **Long Moves**: Wrapping the board only grants passing bonus once per move.
-- **Flag System**: `passedStartThisMove` prevents duplicate salary grants.
+- Pilih job: `warrior`, `mage`, `archer`, atau `assassin`.
+- Karakter auto-menyerang boss lewat sistem **attack gauge** (idle).
+- Setiap beberapa wave muncul **boss** dengan HP yang diskalakan per stage.
+- Kalau boss mati:
+  - stage naik,
+  - progress campaign disimpan.
 
-### Phase 3: Local Multiplayer
-- **4-Player Support**: Cyan, Purple, Orange, Green players.
-- **Turn System**: Auto-rotating turns.
-- **HUD**: Multi-player scoreboard and turn indicators.
+## ⚔️ Core Systems
 
-### Phase 4: Economy System 💰
-- **Credits**: Earn and spend system currency.
-- **Upgrades**: Purchase "System Upgrades" ($200) to multiply score gains.
-- **Dynamic HUD**: Real-time credit tracking.
+- **Raid Player Stats**
+  - Job: `warrior`, `mage`, `archer`, `assassin`.
+  - Stat utama: Attack, Attack Speed, Crit Chance, HP, Level, EXP.
+  - EXP naik → level up → attack dan HP meningkat.
 
-### Phase 5: Gatekeeper Security 🛡️
-- **Realtime Gatekeeper**: Central `GatekeeperService.isGatekeeperConnected` combines Firebase Auth and Firestore `isOnline`.
-- **Hard Start Gate**: Luminoir: Chronicles cannot enter gameplay if the Child Agent is offline or unknown.
-- **Hard Cut**: If the Child Agent disconnects mid-game, the board is cut instantly and routes to an unskippable `AccessDeniedScreen` (no offline mode, no grace period).
+- **Element & Faction System**
+  - Faction: Fire, Water, Thunder, Wind, Earth, YinYang.
+  - Relasi elemen (rock–paper–scissors-style):
+    - Thunder → Earth → Water → Fire → Wind → Thunder.
+  - Jika elemen diserang punya kelemahan:
+    - damageTakenMultiplier dan accuracyMultiplier disesuaikan.
 
-### Phase 6: Online Multiplayer ☁️
-- **Supabase Realtime**: Game state (players, scores, positions) synced via Supabase.
-- **Granular Sync**: Optimized bandwidth with position/credits/score-only updates.
-- **Listeners**: `GameController` subscribes to DB changes for a single source of truth.
-- **Room Management**: Create and Join rooms via unique 4-character codes.
+- **Campaign / Stage System**
+  - Stage dan wave berjalan terus selama raid.
+  - Boss wave setiap wave ke-10, atau wave 1 di stage 1.
+  - Boss HP diskalakan berdasarkan stage.
+  - Gagal bunuh boss sebelum timer habis → balik ke wave farming.
 
-### Phase 10: User Profiles & Specific Usernames 👤
-- **Specific Usernames**: Replaced generic "Player 1/2/3/4" with custom user-defined names.
-- **Firestore Sync**: User profiles (display names) are persisted in Firebase Firestore.
-- **Profile Hub**: Post-login `MainMenuScreen` allows editing names before starting a match.
-- **Simplified Login**: Hardcoded `parentId` for a faster, one-field entry flow.
+- **Economy & Equipment (Prototype)**
+  - Gold dan diamonds sudah dimodelkan untuk ekonomi in-game.
+  - Sistem equipment bisa menambah attack, attack speed, dan crit.
 
-### Phase 11: Animation Layer ✨ **NEW**
-- **Flame Engine**: Integrated for high-performance game rendering.
-- **Rive Animations**: Vector animations for dice rolls with fallback UI.
-- **Lottie Effects**: Particle effects for property upgrades and events.
+## 🧭 Meta & UI
 
-#### Animation Components:
-- **TokenAnimator**: Smooth tile-by-tile movement with `Curves.easeOutBack`.
-- **EffectsManager**: Centralized library for:
-  - Floating score/credits notifications
-  - Property upgrade particle bursts
-  - Event card popups with slide-in animation
-  - Tile glow effects for ownership visualization
-- **DiceAnimation**: Rive-powered dice roll controller.
-
-#### Enhanced UI:
-- **HudOverlay**: Real-time player stats with connection status indicator.
-- **ActionPanel**: Gatekeeper-aware buttons (Roll, Buy, Upgrade, Save, Load).
-- **GameBoardScreenEnhanced**: Modular board screen with integrated animations.
+- **SetupScreen**: login dengan background ilustrasi dunia Luminoir.
+- **MainMenuScreen**:
+  - Tombol ke Raid, Summon, Ninja, dan fitur placeholder lain.
+  - Sidebar kiri: Leaderboard, Friends, Mailbox (masih placeholder).
+  - Sidebar kanan: Store, Fusing, World (roadmap fitur).
+- **AccessDeniedScreen**:
+  - Menjelaskan kenapa anak tidak boleh masuk (Child Agent offline, dll).
 
 ## 🛠️ Tech Stack
+
 - **Framework**: Flutter (Web, Android, Windows)
-- **Game Engine**: Flame ^1.20.0
-- **Animations**: Rive ^0.13.0, Lottie ^3.2.0
-- **Backend (Game State)**: Supabase (PostgreSQL + Realtime)
-- **Backend (Security)**: Firebase Firestore
+- **Game Engine**: Flame
+- **Backend**:
+  - Supabase (game state, profile pemain)
+  - Firebase Firestore (Gatekeeper / Child Agent status)
 - **State Management**: Provider (`ChangeNotifier`)
 - **Navigation**: GoRouter
-- **Styling**: Google Fonts (`Orbitron`, `RobotoMono`)
+- **Styling**: Google Fonts
 
-## 🏃‍♂️ How to Run
+## 🚀 Running Locally
 
-1. **Prerequisites**: Flutter SDK installed.
-2. **Configuration**:
-   - Update `lib/main.dart` with your **Supabase URL** and **Anon Key**.
-   - Ensure Firebase is configured (optional for mock mode).
-   - Add Rive/Lottie assets to `assets/animations/` (optional).
-3. **Install Dependencies**:
+1. Install Flutter SDK.
+2. Konfigurasi backend:
+   - Isi **Supabase URL** dan **Anon Key** di konfigurasi project.
+   - Konfigurasi Firebase (opsional untuk mode mock / pengembangan).
+3. Install dependency:
+
    ```bash
    flutter pub get
    ```
-4. **Run**:
+
+4. Jalankan di web:
+
    ```bash
    flutter run -d chrome
    ```
 
-## 📂 Project Structure
-- `lib/game/`: Core game logic (Controller, Models, SupabaseService).
-- `lib/game/screens/`: UI (Board, Menu, Enhanced Board).
-- `lib/game/animations/`: Animation components (TokenAnimator, EffectsManager, DiceAnimation).
-- `lib/game/widgets/`: Reusable UI widgets (ActionPanel, HudOverlay).
-- `lib/gatekeeper/`: Access control (Firestore Logic).
-- `test/`: Comprehensive unit tests (100+ tests).
+## 📂 Project Structure (Ringkas)
 
-## 🔮 Roadmap
-- [x] Phase 1: MVP Core
-- [x] Phase 2: Tile Mechanics
-- [x] Phase 3: Multiplayer (Local)
-- [x] Phase 4: Economy
-- [x] Phase 5: Gatekeeper (Realtime Child Agent enforcement)
-- [x] Phase 6: Multiplayer (Online - Granular Sync)
-- [x] Phase 10: User Profiles & Specific Usernames
-- [x] **Phase 11: Animation Layer (Flame/Rive/Lottie) ✨**
-- [ ] Phase 7: Event Cards (Deck System)
-- [ ] Phase 8: Properties (Tycoon Mode)
-- [ ] Phase 9: Save/Load (Enhanced)
-
-## 📊 Quality Metrics
-- ✅ **Flutter Analyze:** 0 issues
-- ✅ **Unit Tests:** 126 tests
-- ✅ **Code Coverage:** Animation layer, UI widgets, Services, Leaderboard, Multiplayer, Rules System
-- ✅ **Production Ready:** KISS/DRY principles applied, Standardized Mocks
-
-## 📚 Documentation
-- [Implementation Summary](IMPLEMENTATION_SUMMARY.md) - Detailed changelog
-- [TDD Verification Report](https://github.com/mrizkyandram18/luminoir-chronicles/tree/main) - Test coverage & quality metrics
-- [Walkthrough](https://github.com/mrizkyandram18/luminoir-chronicles/tree/main) - Feature demonstrations
+- `lib/main.dart` – entry point dan routing (Splash → Setup → Raid).
+- `lib/gatekeeper/` – GatekeeperService, SetupScreen, AccessDeniedScreen.
+- `lib/game/raid/` – RaidGame, models, systems, dan UI raid.
+- `lib/services/` – SupabaseService dan integrasi backend lain.
+- `test/` – unit test untuk gatekeeper, identity, dan raid archetypes.
 
 ## 🔗 Links
+
 - **Repository**: [github.com/mrizkyandram18/luminoir-chronicles](https://github.com/mrizkyandram18/luminoir-chronicles)
-- **Latest Release**: Phase 11 - Animation Layer
 
 ---
 
-**Made with ❤️ using Flutter & Firebase & Supabase**
+Made with ❤️ using Flutter, Supabase, and Firebase.
