@@ -1,7 +1,9 @@
-import '../cyber_raid_game.dart';
+import '../raid_game.dart';
 
 class CampaignSystem {
-  final CyberRaidGame game;
+  final RaidGame game;
+
+  CampaignSystem(this.game);
 
   int stage = 1;
   int wave = 1;
@@ -10,8 +12,6 @@ class CampaignSystem {
 
   double bossMaxHp = 1000;
   double bossCurrentHp = 1000;
-
-  CampaignSystem(this.game);
 
   void update(double dt) {
     if (isBossWave) {

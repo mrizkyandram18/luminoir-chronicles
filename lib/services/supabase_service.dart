@@ -267,6 +267,22 @@ class SupabaseService {
         .order('created_at');
   }
 
+  Stream<List<Map<String, dynamic>>> raidChatStream() {
+    return _client
+        .from('chat_messages')
+        .stream(primaryKey: ['id'])
+        .eq('channel', 'raid')
+        .order('created_at');
+  }
+
+  Stream<List<Map<String, dynamic>>> systemChatStream() {
+    return _client
+        .from('chat_messages')
+        .stream(primaryKey: ['id'])
+        .eq('channel', 'system')
+        .order('created_at');
+  }
+
   Stream<List<Map<String, dynamic>>> privateChatStream(String playerId) {
     return _client
         .from('chat_messages')

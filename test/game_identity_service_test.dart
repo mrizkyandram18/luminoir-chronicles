@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_raid/game_identity/game_identity_service.dart';
+import 'package:luminoir_chronicles/game_identity/game_identity_service.dart';
 
 class InMemoryGameIdentityStore implements GameIdentityStore {
   final Map<String, String> saved = {};

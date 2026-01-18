@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:cyber_raid/main.dart';
-import 'package:cyber_raid/gatekeeper/gatekeeper_service.dart';
+import 'package:luminoir_chronicles/main.dart';
+import 'package:luminoir_chronicles/gatekeeper/gatekeeper_service.dart';
 import 'package:mockito/mockito.dart';
 
 // Internal Mock
@@ -21,7 +21,6 @@ class MockGatekeeperService extends Mock implements GatekeeperService {
 
 void main() {
   testWidgets('Splash screen loads', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -29,11 +28,14 @@ void main() {
             create: (_) => MockGatekeeperService(),
           ),
         ],
-        child: const CyberTycoonApp(),
+        child: const LuminoirChroniclesApp(),
       ),
     );
 
-    // Verify that Splash or Setup screen appears
-    expect(find.byType(CyberTycoonApp), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+
+    expect(find.byType(LuminoirChroniclesApp), findsOneWidget);
   });
 }

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.mrizkyandram18" "\0"
-            VALUE "FileDescription", "cyber_tycoon" "\0"
+            VALUE "FileDescription", "Luminoir: Chronicles" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "cyber_tycoon" "\0"
+            VALUE "InternalName", "luminoir_chronicles" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.mrizkyandram18. All rights reserved." "\0"
-            VALUE "OriginalFilename", "cyber_tycoon.exe" "\0"
-            VALUE "ProductName", "cyber_tycoon" "\0"
+            VALUE "OriginalFilename", "luminoir_chronicles.exe" "\0"
+            VALUE "ProductName", "Luminoir: Chronicles" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

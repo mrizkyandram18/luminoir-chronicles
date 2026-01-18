@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flame/components.dart';
+import 'package:flame/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../services/supabase_service.dart';
+import '../models/raid_player.dart';
 
 class SummonScreen extends StatefulWidget {
   final String childId;
@@ -254,6 +258,11 @@ class _SummonResultCard extends StatelessWidget {
     final itemCode = result['item_code']?.toString() ?? 'Unknown';
     final rarity = result['rarity']?.toString() ?? 'common';
     final rarityColor = _rarityColor(rarity);
+    final jobName = result['job']?.toString() ?? 'warrior';
+    final job = PlayerJob.values.firstWhere(
+      (e) => e.name == jobName,
+      orElse: () => PlayerJob.warrior,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -265,6 +274,12 @@ class _SummonResultCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: _HeroSprite(job: job),
+          ),
+          const SizedBox(height: 12),
           Text(
             'Hasil Summon',
             style: GoogleFonts.orbitron(
@@ -306,5 +321,69 @@ class _SummonResultCard extends StatelessWidget {
       default:
         return Colors.grey;
     }
+  }
+}
+
+class _HeroSprite extends StatelessWidget {
+  final PlayerJob job;
+
+  const _HeroSprite({required this.job});
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _spritePathForJob(job);
+    final data = SpriteAnimationData.sequenced(
+      amount: 6,
+      stepTime: 0.12,
+      textureSize: Vector2(32, 32),
+    );
+
+    return FutureBuilder<bool>(
+      future: _spriteExists(path),
+      builder: (context, snapshot) {
+        final hasSprite = snapshot.data == true;
+        if (!hasSprite) {
+          return const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 40,
+          );
+        }
+        return SpriteAnimationWidget.asset(
+          path: path,
+          data: data,
+          anchor: Anchor.center,
+          errorBuilder: (context) {
+            return const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 40,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+String _spritePathForJob(PlayerJob job) {
+  switch (job) {
+    case PlayerJob.warrior:
+      return 'raid_sprites/warrior.png';
+    case PlayerJob.mage:
+      return 'raid_sprites/mage.png';
+    case PlayerJob.archer:
+      return 'raid_sprites/archer.png';
+    case PlayerJob.assassin:
+      return 'raid_sprites/assassin.png';
+  }
+}
+
+Future<bool> _spriteExists(String relativePath) async {
+  try {
+    await rootBundle.load('assets/images/$relativePath');
+    return true;
+  } catch (_) {
+    return false;
   }
 }

@@ -11,8 +11,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'gatekeeper/gatekeeper_service.dart';
 import 'gatekeeper/screens/access_denied_screen.dart';
 import 'gatekeeper/screens/splash_screen.dart';
+import 'gatekeeper/screens/setup_screen.dart';
 import 'game_identity/game_identity_service.dart';
-import 'legacy_monopoly/screens/setup_screen.dart';
 import 'services/supabase_service.dart';
 import 'game/raid/models/raid_player.dart';
 import 'game/raid/screens/character_select_screen.dart';
@@ -68,14 +68,14 @@ void main() async {
           ChangeNotifierProvider(create: (_) => GameIdentityService()),
           Provider<SupabaseService>(create: (_) => SupabaseService()),
         ],
-        child: const CyberTycoonApp(),
+        child: const LuminoirChroniclesApp(),
       ),
     ),
   );
 }
 
-class CyberTycoonApp extends StatelessWidget {
-  const CyberTycoonApp({super.key});
+class LuminoirChroniclesApp extends StatelessWidget {
+  const LuminoirChroniclesApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +84,7 @@ class CyberTycoonApp extends StatelessWidget {
       // We can also check specific metrics here if needed
     }
     return MaterialApp.router(
-      title: 'Cyber Raid',
+      title: 'Luminoir: Chronicles',
       debugShowCheckedModeBanner: false,
       locale: DevicePreview.locale(context), // Required for DevicePreview
       builder: DevicePreview.appBuilder, // Required for DevicePreview
@@ -157,7 +157,7 @@ final _router = GoRouter(
         final title = extra['title'] ?? 'Feature';
         final description =
             extra['description'] ??
-            'Fitur ini akan segera hadir di Cyber Raid.';
+            'Fitur ini akan segera hadir di Luminoir: Chronicles.';
         return FeaturePlaceholderScreen(title: title, description: description);
       },
     ),

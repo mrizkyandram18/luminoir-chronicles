@@ -1,6 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../cyber_raid_game.dart';
+import '../raid_game.dart';
 import '../models/raid_player.dart';
 
 import '../widgets/raid_hud.dart';
@@ -23,12 +23,12 @@ class RaidScreen extends StatefulWidget {
 }
 
 class _RaidScreenState extends State<RaidScreen> {
-  late CyberRaidGame _game;
+  late RaidGame _game;
 
   @override
   void initState() {
     super.initState();
-    _game = CyberRaidGame(
+    _game = RaidGame(
       myPlayerId: widget.myPlayerId,
       myJob: widget.myJob,
     );
@@ -41,10 +41,10 @@ class _RaidScreenState extends State<RaidScreen> {
       body: GameWidget(
         game: _game,
         overlayBuilderMap: {
-          'HUD': (BuildContext context, CyberRaidGame game) {
+          'HUD': (BuildContext context, RaidGame game) {
             return RaidHud(game: game);
           },
-          'Inventory': (BuildContext context, CyberRaidGame game) {
+          'Inventory': (BuildContext context, RaidGame game) {
             return Center(
               child: SizedBox(
                 height: 400,

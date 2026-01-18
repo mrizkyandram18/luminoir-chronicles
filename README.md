@@ -1,6 +1,6 @@
-# Cyber Tycoon 🎲🏙️
+# Luminoir: Chronicles
 
-A web-first, isometric, Cyberpunk-themed board game built with Flutter with **live multiplayer** and **comprehensive animation system**.
+A web-first, isometric, story-driven board game built with Flutter with **live multiplayer** and **comprehensive animation system**.
 
 ## 🚀 Features
 
@@ -42,7 +42,7 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ### Phase 5: Gatekeeper Security 🛡️
 - **Realtime Gatekeeper**: Central `GatekeeperService.isGatekeeperConnected` combines Firebase Auth and Firestore `isOnline`.
-- **Hard Start Gate**: Cyber Tycoon cannot enter gameplay if the Child Agent is offline or unknown.
+- **Hard Start Gate**: Luminoir: Chronicles cannot enter gameplay if the Child Agent is offline or unknown.
 - **Hard Cut**: If the Child Agent disconnects mid-game, the board is cut instantly and routes to an unskippable `AccessDeniedScreen` (no offline mode, no grace period).
 
 ### Phase 6: Online Multiplayer ☁️
@@ -131,11 +131,11 @@ A web-first, isometric, Cyberpunk-themed board game built with Flutter with **li
 
 ## 📚 Documentation
 - [Implementation Summary](IMPLEMENTATION_SUMMARY.md) - Detailed changelog
-- [TDD Verification Report](https://github.com/mrizkyandram18/monopoly-tycoon/tree/main) - Test coverage & quality metrics
-- [Walkthrough](https://github.com/mrizkyandram18/monopoly-tycoon/tree/main) - Feature demonstrations
+- [TDD Verification Report](https://github.com/mrizkyandram18/luminoir-chronicles/tree/main) - Test coverage & quality metrics
+- [Walkthrough](https://github.com/mrizkyandram18/luminoir-chronicles/tree/main) - Feature demonstrations
 
 ## 🔗 Links
-- **Repository**: [github.com/mrizkyandram18/monopoly-tycoon](https://github.com/mrizkyandram18/monopoly-tycoon)
+- **Repository**: [github.com/mrizkyandram18/luminoir-chronicles](https://github.com/mrizkyandram18/luminoir-chronicles)
 - **Latest Release**: Phase 11 - Animation Layer
 
 ---

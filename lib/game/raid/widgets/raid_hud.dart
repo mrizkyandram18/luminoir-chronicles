@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flame/components.dart';
+import 'package:flame/widgets.dart';
 import 'package:go_router/go_router.dart';
-import '../cyber_raid_game.dart';
+import '../raid_game.dart';
+import '../models/raid_player.dart';
 
 class RaidHud extends StatelessWidget {
-  final CyberRaidGame game;
+  final RaidGame game;
 
   const RaidHud({super.key, required this.game});
 
@@ -123,18 +127,29 @@ class RaidHud extends StatelessWidget {
             left: 0,
             right: 0,
             child: Center(
-              child: ValueListenableBuilder<int>(
-                valueListenable: game.waveNotifier,
-                builder: (context, wave, _) {
-                  return Text(
-                    "Stage ${game.stage} - Wave $wave",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  );
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: _HeroSprite(job: game.myJob),
+                  ),
+                  const SizedBox(height: 4),
+                  ValueListenableBuilder<int>(
+                    valueListenable: game.waveNotifier,
+                    builder: (context, wave, _) {
+                      return Text(
+                        "Stage ${game.stage} - Wave $wave",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
@@ -193,11 +208,7 @@ class RaidHud extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.lock,
-                  color: Colors.brown,
-                  size: 36,
-                ),
+                child: _HeroSprite(job: game.myJob),
               ),
             ),
           ),
@@ -307,5 +318,70 @@ class RaidHud extends StatelessWidget {
         ],
       ),
     );
+  }
+
+}
+
+class _HeroSprite extends StatelessWidget {
+  final PlayerJob job;
+
+  const _HeroSprite({required this.job});
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _spritePathForJob(job);
+    final data = SpriteAnimationData.sequenced(
+      amount: 6,
+      stepTime: 0.12,
+      textureSize: Vector2(32, 32),
+    );
+
+    return FutureBuilder<bool>(
+      future: _spriteExists(path),
+      builder: (context, snapshot) {
+        final hasSprite = snapshot.data == true;
+        if (!hasSprite) {
+          return const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 40,
+          );
+        }
+        return SpriteAnimationWidget.asset(
+          path: path,
+          data: data,
+          anchor: Anchor.center,
+          errorBuilder: (context) {
+            return const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 40,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+String _spritePathForJob(PlayerJob job) {
+  if (job == PlayerJob.mage) {
+    return 'raid_sprites/mage.png';
+  }
+  if (job == PlayerJob.archer) {
+    return 'raid_sprites/archer.png';
+  }
+  if (job == PlayerJob.assassin) {
+    return 'raid_sprites/assassin.png';
+  }
+  return 'raid_sprites/warrior.png';
+}
+
+Future<bool> _spriteExists(String relativePath) async {
+  try {
+    await rootBundle.load('assets/images/$relativePath');
+    return true;
+  } catch (_) {
+    return false;
   }
 }

@@ -1,7 +1,7 @@
-import '../cyber_raid_game.dart';
+import '../raid_game.dart';
 
 class CombatSystem {
-  final CyberRaidGame game;
+  final RaidGame game;
 
   double _attackGauge = 0;
 

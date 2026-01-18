@@ -21,11 +21,18 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> {
   Map<String, dynamic>? _profile;
   bool _loading = true;
+  final TextEditingController _chatController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -111,53 +118,57 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(isCompact ? 4 : 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  height: isCompact ? 32 : 40,
-                                  width: isCompact ? 32 : 40,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
+                          GestureDetector(
+                            onTap: _openProfileDialog,
+                            child: Container(
+                              padding: EdgeInsets.all(isCompact ? 4 : 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    height: isCompact ? 32 : 40,
+                                    width: isCompact ? 32 : 40,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.cyanAccent,
+                                      ),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.person,
                                       color: Colors.cyanAccent,
                                     ),
-                                    color:
-                                        Colors.black.withValues(alpha: 0.8),
                                   ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.cyanAccent,
+                                  const SizedBox(width: 6),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: GoogleFonts.orbitron(
+                                          fontSize: isCompact ? 12 : 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Lv.$level • ${job.name}',
+                                        style: GoogleFonts.robotoMono(
+                                          fontSize: isCompact ? 9 : 11,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: GoogleFonts.orbitron(
-                                        fontSize: isCompact ? 12 : 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Lv.$level • ${job.name}',
-                                      style: GoogleFonts.robotoMono(
-                                        fontSize: isCompact ? 9 : 11,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                           const Spacer(),
@@ -222,71 +233,22 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: isCompact ? 12 : 24,
+                          horizontal: isCompact ? 8 : 16,
                           vertical: isCompact ? 4 : 8,
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            _buildPartyGrid(
-                              partySlots,
-                              compact: isCompact,
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _sideMenuButton(
-                                      icon: Icons.shopping_cart,
-                                      label: 'Store',
-                                      onTap: () {
-                                        context.push(
-                                          '/feature',
-                                          extra: {
-                                            'title': 'Store',
-                                            'description':
-                                                'Di Store kamu nanti bisa beli bundle dan offer spesial.',
-                                          },
-                                        );
-                                      },
-                                    ),
-                                    _sideMenuButton(
-                                      icon: Icons.auto_fix_high,
-                                      label: 'Fusing',
-                                      onTap: () {
-                                        context.push(
-                                          '/feature',
-                                          extra: {
-                                            'title': 'Fusing',
-                                            'description':
-                                                'Fusing akan dipakai untuk menggabungkan item menjadi lebih kuat.',
-                                          },
-                                        );
-                                      },
-                                    ),
-                                    _sideMenuButton(
-                                      icon: Icons.public,
-                                      label: 'World',
-                                      onTap: () {
-                                        context.push(
-                                          '/feature',
-                                          extra: {
-                                            'title': 'World',
-                                            'description':
-                                                'World akan menampilkan peta dan stage-stage Cyber Raid.',
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ],
+                            _buildLeftSidebar(isCompact, context),
+                            Expanded(
+                              child: Center(
+                                child: _buildPartyGrid(
+                                  partySlots,
+                                  compact: isCompact,
                                 ),
-                                SizedBox(height: isCompact ? 8 : 16),
-                                _buildCampaignSection(job, isCompact),
-                              ],
+                              ),
                             ),
+                            _buildRightSidebar(isCompact, context),
                           ],
                         ),
                       ),
@@ -296,9 +258,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                         horizontal: isCompact ? 12 : 16,
                         vertical: isCompact ? 6 : 8,
                       ),
-                      color: Colors.black.withValues(alpha: 0.7),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _bottomMenuItem(
                             icon: Icons.storefront,
@@ -314,6 +275,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                               );
                             },
                           ),
+                          SizedBox(width: isCompact ? 10 : 14),
                           _bottomMenuItem(
                             icon: Icons.auto_awesome,
                             label: 'Summon',
@@ -327,6 +289,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                               await _loadProfile();
                             },
                           ),
+                          SizedBox(width: isCompact ? 10 : 14),
                           _bottomMenuItem(
                             icon: Icons.sports_martial_arts,
                             label: 'Ninja',
@@ -339,10 +302,25 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                               );
                             },
                           ),
+                          SizedBox(width: isCompact ? 10 : 14),
                           _bottomMenuItem(
                             icon: Icons.inventory_2,
                             label: 'Bag',
                             onTap: _openBag,
+                          ),
+                          SizedBox(width: isCompact ? 10 : 14),
+                          _bottomMenuItem(
+                            icon: Icons.flag,
+                            label: 'Campaign',
+                            onTap: () {
+                              context.go(
+                                '/raid',
+                                extra: {
+                                  'childId': widget.childId,
+                                  'job': job,
+                                },
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -409,93 +387,30 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     return slots;
   }
 
-  Widget _buildCampaignSection(PlayerJob job, bool compact) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'CAMPAIGN',
-          style: GoogleFonts.orbitron(
-            fontSize: compact ? 18 : 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            shadows: const [
-              Shadow(
-                color: Colors.black,
-                blurRadius: 12,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: compact ? 4 : 8),
-        Text(
-          'Tap to start mission',
-          style: GoogleFonts.robotoMono(
-            fontSize: compact ? 10 : 12,
-            color: Colors.white70,
-          ),
-        ),
-        SizedBox(height: compact ? 8 : 16),
-        GestureDetector(
-          onTap: () {
-            context.go(
-              '/raid',
-              extra: {
-                'childId': widget.childId,
-                'job': job,
-              },
-            );
-          },
-          child: Container(
-            width: compact ? 180 : 220,
-            height: compact ? 56 : 80,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.cyanAccent,
-                width: 2,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'START',
-              style: GoogleFonts.orbitron(
-                fontSize: compact ? 20 : 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.cyanAccent,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPartyGrid(
     List<_HeroSlotData> slots, {
     required bool compact,
   }) {
+    const columns = 3;
+    const rows = 2;
     return Column(
-      children: [
-        Row(
-          children: List.generate(3, (index) {
-            final slot = slots[index];
-            return Expanded(
-              child: _heroSlot(slot, compact),
-            );
-          }),
-        ),
-        SizedBox(height: compact ? 4 : 12),
-        Row(
-          children: List.generate(3, (index) {
-            final slot = slots[index + 3];
-            return Expanded(
-              child: _heroSlot(slot, compact),
-            );
-          }),
-        ),
-      ],
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(rows, (row) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: row == rows - 1 ? 0 : (compact ? 4 : 8),
+          ),
+          child: Row(
+            children: List.generate(columns, (col) {
+              final index = row * columns + col;
+              final slot = slots[index];
+              return Expanded(
+                child: _heroSlot(slot, compact),
+              );
+            }),
+          ),
+        );
+      }),
     );
   }
 
@@ -532,6 +447,74 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         rarityColor = Colors.grey;
     }
 
+    IconData jobIcon;
+    switch (slot.job) {
+      case PlayerJob.warrior:
+        jobIcon = Icons.security;
+        break;
+      case PlayerJob.mage:
+        jobIcon = Icons.bolt;
+        break;
+      case PlayerJob.archer:
+        jobIcon = Icons.gps_fixed;
+        break;
+      case PlayerJob.assassin:
+        jobIcon = Icons.casino;
+        break;
+    }
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: locked ? Colors.grey : color,
+                  width: 2,
+                ),
+              ),
+              child: locked
+                  ? Icon(
+                      Icons.add,
+                      color: Colors.grey,
+                      size: 24,
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/${_spritePathForJob(slot.job)}',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            jobIcon,
+                            color: color,
+                            size: 24,
+                          );
+                        },
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              locked ? 'Empty' : slot.name,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.robotoMono(
+                fontSize: 8,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: 4,
@@ -552,29 +535,44 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  locked ? Icons.lock : Icons.shield,
-                  color: locked ? Colors.grey : color,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  locked ? 'Locked' : 'Lv.${slot.level}',
-                  style: GoogleFonts.robotoMono(
-                    fontSize: compact ? 9 : 10,
-                    color: Colors.white,
-                  ),
-                ),
-                if (!locked) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    slot.rarity.toUpperCase(),
-                    style: GoogleFonts.robotoMono(
-                      fontSize: compact ? 9 : 10,
-                      color: rarityColor,
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: locked ? Colors.grey : color.withValues(alpha: 0.2),
+                    border: Border.all(
+                      color: locked ? Colors.grey : color,
+                      width: 2,
                     ),
                   ),
-                ],
+                  child: Icon(
+                    locked ? Icons.lock : jobIcon,
+                    color: locked ? Colors.black54 : color,
+                    size: 12,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      locked ? 'Locked' : 'Lv.${slot.level}',
+                      style: GoogleFonts.robotoMono(
+                        fontSize: 10,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (!locked)
+                      Text(
+                        slot.rarity.toUpperCase(),
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 9,
+                          color: rarityColor,
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -590,11 +588,26 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 width: 2,
               ),
             ),
-            child: Icon(
-              locked ? Icons.add : Icons.person,
-              color: locked ? Colors.grey : color,
-              size: compact ? 26 : 32,
-            ),
+            child: locked
+                ? Icon(
+                    Icons.add,
+                    color: Colors.grey,
+                    size: compact ? 26 : 32,
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/images/${_spritePathForJob(slot.job)}',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.person,
+                          color: color,
+                          size: compact ? 26 : 32,
+                        );
+                      },
+                    ),
+                  ),
           ),
           SizedBox(height: compact ? 2 : 4),
           Text(
@@ -610,6 +623,182 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
+  String _spritePathForJob(PlayerJob job) {
+    switch (job) {
+      case PlayerJob.warrior:
+        return 'raid_sprites/warrior.png';
+      case PlayerJob.mage:
+        return 'raid_sprites/mage.png';
+      case PlayerJob.archer:
+        return 'raid_sprites/archer.png';
+      case PlayerJob.assassin:
+        return 'raid_sprites/assassin.png';
+    }
+  }
+
+  Widget _buildLeftSidebar(bool compact, BuildContext context) {
+    final width = compact ? 64.0 : 72.0;
+    return Container(
+      width: width,
+      margin: EdgeInsets.only(left: compact ? 4 : 8),
+      child: _buildLeftSocialButtons(compact, context),
+    );
+  }
+
+  Widget _buildLeftSocialButtons(bool compact, BuildContext context) {
+    final size = compact ? 32.0 : 38.0;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _leftCircleButton(
+          icon: Icons.leaderboard,
+          size: size,
+          onTap: () {
+            context.push(
+              '/feature',
+              extra: {
+                'title': 'Leaderboard',
+                'description':
+                    'Leaderboard akan menampilkan peringkat pemain di Luminoir: Chronicles.',
+              },
+            );
+          },
+        ),
+        SizedBox(height: compact ? 6 : 8),
+        _leftCircleButton(
+          icon: Icons.group,
+          size: size,
+          onTap: () {
+            context.push(
+              '/feature',
+              extra: {
+                'title': 'Friends',
+                'description':
+                    'Friends akan menampilkan daftar teman untuk bermain bersama.',
+              },
+            );
+          },
+        ),
+        SizedBox(height: compact ? 6 : 8),
+        _leftCircleButton(
+          icon: Icons.mail,
+          size: size,
+          onTap: () {
+            context.push(
+              '/feature',
+              extra: {
+                'title': 'Mailbox',
+                'description':
+                    'Mailbox akan menampilkan pesan dan hadiah dari sistem.',
+              },
+            );
+          },
+        ),
+        SizedBox(height: compact ? 6 : 8),
+        _leftCircleButton(
+          icon: Icons.chat_bubble,
+          size: size,
+          onTap: _openChat,
+        ),
+      ],
+    );
+  }
+
+  Widget _leftCircleButton({
+    required IconData icon,
+    required double size,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: size * 0.55,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRightSidebar(bool compact, BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(right: compact ? 4 : 8),
+      padding: EdgeInsets.symmetric(
+        vertical: compact ? 6 : 10,
+        horizontal: compact ? 4 : 6,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(26),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _sideMenuButton(
+              icon: Icons.shopping_cart,
+              label: 'Store',
+              onTap: () {
+                context.push(
+                  '/feature',
+                  extra: {
+                    'title': 'Store',
+                    'description':
+                        'Di Store kamu nanti bisa beli bundle dan offer spesial.',
+                  },
+                );
+              },
+            ),
+            SizedBox(height: compact ? 6 : 8),
+            _sideMenuButton(
+              icon: Icons.auto_fix_high,
+              label: 'Fusing',
+              onTap: () {
+                context.push(
+                  '/feature',
+                  extra: {
+                    'title': 'Fusing',
+                    'description':
+                        'Fusing akan dipakai untuk menggabungkan item menjadi lebih kuat.',
+                  },
+                );
+              },
+            ),
+            SizedBox(height: compact ? 6 : 8),
+            _sideMenuButton(
+              icon: Icons.public,
+              label: 'World',
+              onTap: () {
+                context.push(
+                  '/feature',
+                  extra: {
+                    'title': 'World',
+                    'description':
+                        'World akan menampilkan peta dan stage-stage Luminoir: Chronicles.',
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _sideMenuButton({
     required IconData icon,
     required String label,
@@ -619,11 +808,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       onTap: onTap,
       child: Container(
         width: 80,
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -702,56 +890,549 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
+        final screenHeight = MediaQuery.of(context).size.height;
+        final sheetHeight = (screenHeight * 0.7).clamp(280.0, 420.0);
+
         if (bagPlayer.equipment.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.9),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+          return Center(
+            child: Container(
+              height: sheetHeight,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.cyanAccent),
               ),
-              border: Border.all(color: Colors.cyanAccent),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Bag',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                            },
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                'Bag',
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 48),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Belum ada equipment di Bag kamu.\nCoba lengkapi ninja kamu dulu.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 12,
-                      color: Colors.white70,
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Belum ada equipment di Bag kamu.\nCoba lengkapi ninja kamu dulu.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
         }
 
-        final screenHeight = MediaQuery.of(context).size.height;
-        final sheetHeight = (screenHeight * 0.7).clamp(280.0, 420.0);
-
         return Center(
-          child: SizedBox(
+          child: Container(
             height: sheetHeight,
-            child: InventoryWidget(
-              player: bagPlayer,
-              onEquip: (_) {},
-              onMerge: (a, b) {
-                equipmentSystem.merge(bagPlayer, a, b);
-              },
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.cyanAccent),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white70,
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'Bag',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: InventoryWidget(
+                    player: bagPlayer,
+                    onEquip: (_) {},
+                    onMerge: (a, b) {
+                      equipmentSystem.merge(bagPlayer, a, b);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openChat() {
+    final supabase = context.read<SupabaseService>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black.withValues(alpha: 0.95),
+      isScrollControlled: true,
+      builder: (ctx) {
+        String selectedChannel = 'world';
+
+        Stream<List<Map<String, dynamic>>> streamForChannel(String channel) {
+          switch (channel) {
+            case 'private':
+              return supabase.privateChatStream(widget.childId);
+            case 'system':
+              return supabase.systemChatStream();
+            default:
+              return supabase.worldChatStream();
+          }
+        }
+
+        String labelForChannel(String channel) {
+          switch (channel) {
+            case 'private':
+              return 'Private';
+            case 'system':
+              return 'System';
+            default:
+              return 'World';
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: 8,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 12,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(ctx).size.height * 0.6,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                            },
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                '${labelForChannel(selectedChannel)} Chat',
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 48),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('World'),
+                            selected: selectedChannel == 'world',
+                            onSelected: (v) {
+                              if (v) {
+                                setState(() {
+                                  selectedChannel = 'world';
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Private'),
+                            selected: selectedChannel == 'private',
+                            onSelected: (v) {
+                              if (v) {
+                                setState(() {
+                                  selectedChannel = 'private';
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('System'),
+                            selected: selectedChannel == 'system',
+                            onSelected: (v) {
+                              if (v) {
+                                setState(() {
+                                  selectedChannel = 'system';
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: streamForChannel(selectedChannel),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.cyanAccent,
+                                ),
+                              );
+                            }
+                            var messages = snapshot.data!;
+                            if (selectedChannel == 'private') {
+                              final playerId = widget.childId;
+                              messages = messages
+                                  .where((msg) {
+                                    final senderId =
+                                        msg['sender_id']?.toString() ?? '';
+                                    final targetId =
+                                        msg['target_id']?.toString() ?? '';
+                                    return senderId == playerId ||
+                                        targetId == playerId;
+                                  })
+                                  .toList();
+                            }
+                            if (messages.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  'Belum ada pesan.\nMulai ngobrol duluan yuk.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: 12,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final msg = messages[index];
+                                final senderId =
+                                    msg['sender_id']?.toString() ?? 'Player';
+                                final content =
+                                    msg['content']?.toString() ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                    horizontal: 4,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 10,
+                                        backgroundColor: Colors.cyanAccent,
+                                        child: Text(
+                                          senderId.isNotEmpty
+                                              ? senderId[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              senderId,
+                                              style: GoogleFonts.robotoMono(
+                                                fontSize: 11,
+                                                color: Colors.cyanAccent,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              content,
+                                              style: GoogleFonts.robotoMono(
+                                                fontSize: 11,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _chatController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Ketik pesan...',
+                                hintStyle:
+                                    const TextStyle(color: Colors.white54),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  borderSide:
+                                      const BorderSide(color: Colors.white24),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  borderSide: const BorderSide(
+                                    color: Colors.cyanAccent,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              onSubmitted: (_) =>
+                                  _sendChatMessage(selectedChannel),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.send,
+                              color: Colors.cyanAccent,
+                            ),
+                            onPressed: () => _sendChatMessage(selectedChannel),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _sendChatMessage(String channel) async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+    final supabase = context.read<SupabaseService>();
+    await supabase.sendChatMessage(
+      channel: channel,
+      senderId: widget.childId,
+      content: text,
+    );
+    _chatController.clear();
+  }
+
+  void _openProfileDialog() {
+    if (_profile == null) {
+      return;
+    }
+    final stats = _profile!['stats'] as Map<String, dynamic>?;
+    final rawJob = _profile!['job'] ?? stats?['job'];
+    final jobStr = (rawJob as String?) ?? 'warrior';
+    final job = PlayerJob.values.firstWhere(
+      (e) => e.name == jobStr,
+      orElse: () => PlayerJob.warrior,
+    );
+    final name =
+        (_profile!['name'] ?? stats?['name'] ?? 'Agent') as String;
+    final level =
+        (_profile!['level'] ?? stats?['level'] ?? 1) as int;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black.withValues(alpha: 0.95),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white70,
+                      ),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Profile',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 56,
+                      width: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.cyanAccent),
+                        color: Colors.black.withValues(alpha: 0.8),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.cyanAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: GoogleFonts.orbitron(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Lv.$level • ${job.name}',
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.cyanAccent,
+                          foregroundColor: Colors.black,
+                        ),
+                        child: const Text('Avatar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurpleAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Frame'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24),
+                    ),
+                    child: const Text('Settings'),
+                  ),
+                ),
+              ],
             ),
           ),
         );

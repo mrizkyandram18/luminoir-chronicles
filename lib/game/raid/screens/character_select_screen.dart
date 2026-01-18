@@ -28,43 +28,46 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
           // LEFT: Class Selection
           Expanded(
             flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  "SELECT CLASS",
-                  style: TextStyle(
-                    color: Colors.cyanAccent,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "SELECT CLASS",
+                    style: TextStyle(
+                      color: Colors.cyanAccent,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                _classOption(
-                  PlayerJob.warrior,
-                  "WARRIOR",
-                  Icons.shield,
-                  Colors.redAccent,
-                ),
-                _classOption(
-                  PlayerJob.mage,
-                  "MAGE",
-                  Icons.auto_awesome,
-                  Colors.purpleAccent,
-                ),
-                _classOption(
-                  PlayerJob.archer,
-                  "ARCHER",
-                  Icons.gps_fixed,
-                  Colors.greenAccent,
-                ),
-                _classOption(
-                  PlayerJob.assassin,
-                  "ASSASSIN",
-                  Icons.flash_on,
-                  Colors.yellowAccent,
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  _classOption(
+                    PlayerJob.warrior,
+                    "WARRIOR",
+                    Icons.shield,
+                    Colors.redAccent,
+                  ),
+                  _classOption(
+                    PlayerJob.mage,
+                    "MAGE",
+                    Icons.auto_awesome,
+                    Colors.purpleAccent,
+                  ),
+                  _classOption(
+                    PlayerJob.archer,
+                    "ARCHER",
+                    Icons.gps_fixed,
+                    Colors.greenAccent,
+                  ),
+                  _classOption(
+                    PlayerJob.assassin,
+                    "ASSASSIN",
+                    Icons.flash_on,
+                    Colors.yellowAccent,
+                  ),
+                ],
+              ),
             ),
           ),
 

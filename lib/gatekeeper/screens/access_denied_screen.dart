@@ -53,7 +53,7 @@ class AccessDeniedScreen extends StatelessWidget {
               ),
               const Gap(30),
               Text(
-                'Nyalakan System Service Child Agent\nuntuk mengakses Cyber Tycoon.',
+                'Nyalakan System Service Child Agent\nuntuk mengakses Luminoir: Chronicles.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.roboto(color: Colors.white70, fontSize: 14),
               ),

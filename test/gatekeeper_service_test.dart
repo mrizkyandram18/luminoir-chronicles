@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cyber_raid/gatekeeper/gatekeeper_result.dart';
-import 'package:cyber_raid/gatekeeper/gatekeeper_service.dart';
+import 'package:luminoir_chronicles/gatekeeper/gatekeeper_result.dart';
+import 'package:luminoir_chronicles/gatekeeper/gatekeeper_service.dart';
 
 class TestGatekeeperService extends GatekeeperService {
   bool session = true;

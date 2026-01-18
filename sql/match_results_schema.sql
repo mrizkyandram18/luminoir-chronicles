@@ -1,5 +1,5 @@
 -- ================================================
--- CYBER TYCOON: Match Results Schema
+-- LUMINOIR: CHRONICLES: Match Results Schema
 -- Prevents save/load exploits by tracking final match results
 -- ================================================
 

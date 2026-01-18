@@ -98,9 +98,9 @@ class _NinjaScreenState extends State<NinjaScreen> {
                         child: GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
+                            crossAxisCount: 6,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 3 / 4,
                           ),
                           itemCount: heroes.length,
