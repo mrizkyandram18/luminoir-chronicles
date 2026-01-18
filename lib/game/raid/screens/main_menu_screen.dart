@@ -94,306 +94,263 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
           ),
           SafeArea(
-            child: _loading
-                ? const Center(
-                    child:
-                        CircularProgressIndicator(color: Colors.cyanAccent),
-                  )
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    height: 40,
-                                    width: 40,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.cyanAccent,
-                                      ),
-                                      color: Colors.black
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.person,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxHeight < 420;
+                if (_loading) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.cyanAccent),
+                  );
+                }
+                return Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 12 : 16,
+                        vertical: isCompact ? 4 : 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isCompact ? 4 : 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  height: isCompact ? 32 : 40,
+                                  width: isCompact ? 32 : 40,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color: Colors.cyanAccent,
                                     ),
+                                    color:
+                                        Colors.black.withValues(alpha: 0.8),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: GoogleFonts.orbitron(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.cyanAccent,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: GoogleFonts.orbitron(
+                                        fontSize: isCompact ? 12 : 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Lv.$level • ${job.name}',
-                                        style: GoogleFonts.robotoMono(
-                                          fontSize: 11,
-                                          color: Colors.white70,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Lv.$level • ${job.name}',
+                                      style: GoogleFonts.robotoMono(
+                                        fontSize: isCompact ? 9 : 11,
+                                        color: Colors.white70,
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.diamond,
-                                    color: Colors.purpleAccent,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    gems.toString(),
-                                    style: GoogleFonts.robotoMono(
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.monetization_on,
-                                    color: Colors.amberAccent,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    gold.toString(),
-                                    style: GoogleFonts.robotoMono(
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 8,
-                          ),
-                          child: Column(
-                            children: [
-                              _buildPartyGrid(partySlots),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _sideMenuButton(
-                                    icon: Icons.shopping_cart,
-                                    label: 'Store',
-                                    onTap: () {
-                                      context.push(
-                                        '/feature',
-                                        extra: {
-                                          'title': 'Store',
-                                          'description':
-                                              'Di Store kamu nanti bisa beli bundle dan offer spesial.',
-                                        },
-                                      );
-                                    },
-                                  ),
-                                  _sideMenuButton(
-                                    icon: Icons.auto_fix_high,
-                                    label: 'Fusing',
-                                    onTap: () {
-                                      context.push(
-                                        '/feature',
-                                        extra: {
-                                          'title': 'Fusing',
-                                          'description':
-                                              'Fusing akan dipakai untuk menggabungkan item menjadi lebih kuat.',
-                                        },
-                                      );
-                                    },
-                                  ),
-                                  _sideMenuButton(
-                                    icon: Icons.public,
-                                    label: 'World',
-                                    onTap: () {
-                                      context.push(
-                                        '/feature',
-                                        extra: {
-                                          'title': 'World',
-                                          'description':
-                                              'World akan menampilkan peta dan stage-stage Cyber Raid.',
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'CAMPAIGN',
-                                style: GoogleFonts.orbitron(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: const [
-                                    Shadow(
-                                      color: Colors.black,
-                                      blurRadius: 12,
                                     ),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Tap to start mission',
-                                style: GoogleFonts.robotoMono(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              GestureDetector(
-                                onTap: () {
-                                  context.go(
-                                    '/raid',
-                                    extra: {
-                                      'childId': widget.childId,
-                                      'job': job,
-                                    },
-                                  );
-                                },
-                                child: Container(
-                                  width: 220,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Colors.black.withValues(alpha: 0.4),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.cyanAccent,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'START',
-                                    style: GoogleFonts.orbitron(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.cyanAccent,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                          const Spacer(),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isCompact ? 8 : 10,
+                              vertical: isCompact ? 4 : 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.diamond,
+                                  color: Colors.purpleAccent,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  gems.toString(),
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: isCompact ? 10 : 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isCompact ? 8 : 10,
+                              vertical: isCompact ? 4 : 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.monetization_on,
+                                  color: Colors.amberAccent,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  gold.toString(),
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: isCompact ? 10 : 12,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 12 : 24,
+                          vertical: isCompact ? 4 : 8,
                         ),
-                        color: Colors.black.withValues(alpha: 0.7),
-                        child: Row(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _bottomMenuItem(
-                              icon: Icons.storefront,
-                              label: 'Shop',
-                              onTap: () {
-                                context.push(
-                                  '/feature',
-                                  extra: {
-                                    'title': 'Shop',
-                                    'description':
-                                        'Shop berisi item harian, coin, dan resource lain.',
-                                  },
-                                );
-                              },
+                            _buildPartyGrid(
+                              partySlots,
+                              compact: isCompact,
                             ),
-                            _bottomMenuItem(
-                              icon: Icons.auto_awesome,
-                              label: 'Summon',
-                              onTap: () async {
-                                await context.push(
-                                  '/summon',
-                                  extra: {
-                                    'childId': widget.childId,
-                                  },
-                                );
-                                await _loadProfile();
-                              },
-                            ),
-                            _bottomMenuItem(
-                              icon: Icons.sports_martial_arts,
-                              label: 'Ninja',
-                              onTap: () {
-                                context.push(
-                                  '/ninja',
-                                  extra: {
-                                    'childId': widget.childId,
-                                  },
-                                );
-                              },
-                            ),
-                            _bottomMenuItem(
-                              icon: Icons.inventory_2,
-                              label: 'Bag',
-                              onTap: _openBag,
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _sideMenuButton(
+                                      icon: Icons.shopping_cart,
+                                      label: 'Store',
+                                      onTap: () {
+                                        context.push(
+                                          '/feature',
+                                          extra: {
+                                            'title': 'Store',
+                                            'description':
+                                                'Di Store kamu nanti bisa beli bundle dan offer spesial.',
+                                          },
+                                        );
+                                      },
+                                    ),
+                                    _sideMenuButton(
+                                      icon: Icons.auto_fix_high,
+                                      label: 'Fusing',
+                                      onTap: () {
+                                        context.push(
+                                          '/feature',
+                                          extra: {
+                                            'title': 'Fusing',
+                                            'description':
+                                                'Fusing akan dipakai untuk menggabungkan item menjadi lebih kuat.',
+                                          },
+                                        );
+                                      },
+                                    ),
+                                    _sideMenuButton(
+                                      icon: Icons.public,
+                                      label: 'World',
+                                      onTap: () {
+                                        context.push(
+                                          '/feature',
+                                          extra: {
+                                            'title': 'World',
+                                            'description':
+                                                'World akan menampilkan peta dan stage-stage Cyber Raid.',
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: isCompact ? 8 : 16),
+                                _buildCampaignSection(job, isCompact),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 12 : 16,
+                        vertical: isCompact ? 6 : 8,
+                      ),
+                      color: Colors.black.withValues(alpha: 0.7),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _bottomMenuItem(
+                            icon: Icons.storefront,
+                            label: 'Shop',
+                            onTap: () {
+                              context.push(
+                                '/feature',
+                                extra: {
+                                  'title': 'Shop',
+                                  'description':
+                                      'Shop berisi item harian, coin, dan resource lain.',
+                                },
+                              );
+                            },
+                          ),
+                          _bottomMenuItem(
+                            icon: Icons.auto_awesome,
+                            label: 'Summon',
+                            onTap: () async {
+                              await context.push(
+                                '/summon',
+                                extra: {
+                                  'childId': widget.childId,
+                                },
+                              );
+                              await _loadProfile();
+                            },
+                          ),
+                          _bottomMenuItem(
+                            icon: Icons.sports_martial_arts,
+                            label: 'Ninja',
+                            onTap: () {
+                              context.push(
+                                '/ninja',
+                                extra: {
+                                  'childId': widget.childId,
+                                },
+                              );
+                            },
+                          ),
+                          _bottomMenuItem(
+                            icon: Icons.inventory_2,
+                            label: 'Bag',
+                            onTap: _openBag,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -452,23 +409,89 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     return slots;
   }
 
-  Widget _buildPartyGrid(List<_HeroSlotData> slots) {
+  Widget _buildCampaignSection(PlayerJob job, bool compact) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'CAMPAIGN',
+          style: GoogleFonts.orbitron(
+            fontSize: compact ? 18 : 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: const [
+              Shadow(
+                color: Colors.black,
+                blurRadius: 12,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: compact ? 4 : 8),
+        Text(
+          'Tap to start mission',
+          style: GoogleFonts.robotoMono(
+            fontSize: compact ? 10 : 12,
+            color: Colors.white70,
+          ),
+        ),
+        SizedBox(height: compact ? 8 : 16),
+        GestureDetector(
+          onTap: () {
+            context.go(
+              '/raid',
+              extra: {
+                'childId': widget.childId,
+                'job': job,
+              },
+            );
+          },
+          child: Container(
+            width: compact ? 180 : 220,
+            height: compact ? 56 : 80,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.cyanAccent,
+                width: 2,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'START',
+              style: GoogleFonts.orbitron(
+                fontSize: compact ? 20 : 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.cyanAccent,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPartyGrid(
+    List<_HeroSlotData> slots, {
+    required bool compact,
+  }) {
     return Column(
       children: [
         Row(
           children: List.generate(3, (index) {
             final slot = slots[index];
             return Expanded(
-              child: _heroSlot(slot),
+              child: _heroSlot(slot, compact),
             );
           }),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 4 : 12),
         Row(
           children: List.generate(3, (index) {
             final slot = slots[index + 3];
             return Expanded(
-              child: _heroSlot(slot),
+              child: _heroSlot(slot, compact),
             );
           }),
         ),
@@ -476,7 +499,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  Widget _heroSlot(_HeroSlotData slot) {
+  Widget _heroSlot(_HeroSlotData slot, bool compact) {
     final locked = !slot.unlocked;
     Color color;
     switch (slot.job) {
@@ -510,12 +533,18 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: 4,
+        vertical: compact ? 4 : 8,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: compact ? 1 : 2,
+            ),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(12),
@@ -532,7 +561,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 Text(
                   locked ? 'Locked' : 'Lv.${slot.level}',
                   style: GoogleFonts.robotoMono(
-                    fontSize: 10,
+                    fontSize: compact ? 9 : 10,
                     color: Colors.white,
                   ),
                 ),
@@ -541,7 +570,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   Text(
                     slot.rarity.toUpperCase(),
                     style: GoogleFonts.robotoMono(
-                      fontSize: 10,
+                      fontSize: compact ? 9 : 10,
                       color: rarityColor,
                     ),
                   ),
@@ -549,10 +578,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: compact ? 4 : 6),
           Container(
-            width: 64,
-            height: 64,
+            width: compact ? 52 : 64,
+            height: compact ? 52 : 64,
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(18),
@@ -564,15 +593,15 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             child: Icon(
               locked ? Icons.add : Icons.person,
               color: locked ? Colors.grey : color,
-              size: 32,
+              size: compact ? 26 : 32,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: compact ? 2 : 4),
           Text(
             locked ? 'Empty' : slot.name,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.robotoMono(
-              fontSize: 11,
+              fontSize: compact ? 9 : 11,
               color: Colors.white,
             ),
           ),

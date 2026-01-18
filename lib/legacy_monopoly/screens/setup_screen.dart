@@ -9,6 +9,8 @@ import '../../bootstrap/launch_flow.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/supabase_service.dart';
+import 'package:flame/game.dart';
+import '../game/login_background_game.dart';
 
 /// Setup screen in Classic Monopoly Style
 class SetupScreen extends StatefulWidget {
@@ -120,111 +122,127 @@ class _SetupScreenState extends State<SetupScreen> {
 
     return Scaffold(
       backgroundColor: boardBeige,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            debugPrint("SetupScreen Body Constraints: $constraints");
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 32,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: boardBlack, width: 3),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 15,
-                        offset: Offset(8, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "CYBER",
-                        style: GoogleFonts.philosopher(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: boardBlack,
-                          letterSpacing: 4,
-                        ),
-                      ),
-                      Text(
-                        "TYCOON",
-                        style: GoogleFonts.philosopher(
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                          color: boardBlack,
-                          height: 0.9,
-                        ),
-                      ),
-                      const Gap(8),
-                      Container(height: 2, width: 100, color: boardBlack),
-                      const Gap(32),
-                      Text(
-                        "OFFICIAL LOGIN",
-                        style: GoogleFonts.philosopher(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const Gap(24),
-                      _buildClassicTextField(
-                        controller: _childIdController,
-                        label: "ENTER USER ID",
-                        icon: Icons.fingerprint,
-                      ),
-                      const Gap(32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[800],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: const RoundedRectangleBorder(
-                              side: BorderSide(color: boardBlack, width: 2),
-                            ),
-                            elevation: 8,
+      body: Stack(
+        children: [
+          Positioned.fill(child: GameWidget(game: LoginBackgroundGame())),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                debugPrint("SetupScreen Body Constraints: $constraints");
+
+                // Determine if the screen is vertically constrained (e.g. landscape phone)
+                final isCompact = constraints.maxHeight < 500;
+
+                return Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: isCompact ? 16 : 32,
+                    ),
+                    child: Container(
+                      padding: EdgeInsets.all(isCompact ? 16 : 32),
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: boardBlack, width: 3),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 15,
+                            offset: Offset(8, 8),
                           ),
-                          onPressed: _isLoading ? null : _login,
-                          child: _isLoading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                )
-                              : Text(
-                                  "ESTABLISH CONNECTION",
-                                  style: GoogleFonts.philosopher(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "CYBER",
+                            style: GoogleFonts.philosopher(
+                              fontSize: isCompact ? 16 : 20,
+                              fontWeight: FontWeight.bold,
+                              color: boardBlack,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                          Text(
+                            "TYCOON",
+                            style: GoogleFonts.philosopher(
+                              fontSize: isCompact ? 32 : 42,
+                              fontWeight: FontWeight.bold,
+                              color: boardBlack,
+                              height: 0.9,
+                            ),
+                          ),
+                          const Gap(8),
+                          Container(height: 2, width: 100, color: boardBlack),
+                          Gap(isCompact ? 16 : 32),
+                          Text(
+                            "OFFICIAL LOGIN",
+                            style: GoogleFonts.philosopher(
+                              fontSize: isCompact ? 12 : 14,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          Gap(isCompact ? 12 : 24),
+                          _buildClassicTextField(
+                            controller: _childIdController,
+                            label: "ENTER USER ID",
+                            icon: Icons.fingerprint,
+                            isCompact: isCompact,
+                          ),
+                          Gap(isCompact ? 16 : 32),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[800],
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: isCompact ? 12 : 18,
                                 ),
-                        ),
+                                shape: const RoundedRectangleBorder(
+                                  side: BorderSide(color: boardBlack, width: 2),
+                                ),
+                                elevation: 8,
+                              ),
+                              onPressed: _isLoading ? null : _login,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      "ESTABLISH CONNECTION",
+                                      style: GoogleFonts.philosopher(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          Gap(isCompact ? 12 : 16),
+                          Text(
+                            "Secured Line - Classic Edition",
+                            style: GoogleFonts.philosopher(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
-                      const Gap(16),
-                      Text(
-                        "Secured Line - Classic Edition",
-                        style: GoogleFonts.philosopher(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -233,6 +251,7 @@ class _SetupScreenState extends State<SetupScreen> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    bool isCompact = false,
   }) {
     return TextField(
       controller: controller,
@@ -250,6 +269,9 @@ class _SetupScreenState extends State<SetupScreen> {
         prefixIcon: Icon(icon, color: boardBlack),
         filled: true,
         fillColor: Colors.grey[100],
+        contentPadding: isCompact
+            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+            : null,
         enabledBorder: const OutlineInputBorder(
           borderSide: BorderSide(color: boardBlack, width: 2),
         ),
