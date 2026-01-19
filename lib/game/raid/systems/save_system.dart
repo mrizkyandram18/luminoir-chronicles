@@ -75,6 +75,9 @@ class SaveSystem {
       now: now,
     );
 
+    final idleExp =
+        IdleRewardSystem.calculateIdleExpFromGold(idleGold);
+
     final newGold = gold + idleGold;
 
     await _client.from('players').update({
@@ -82,6 +85,10 @@ class SaveSystem {
       'last_login': now.toIso8601String(),
       'account_power_multiplier': accountPowerMultiplier,
     }).eq('id', playerId);
+
+    if (idleExp > 0) {
+      await _applyIdleExp(playerId, idleExp);
+    }
 
     _currentPlayer = PlayerSnapshot(
       id: playerId,
@@ -93,6 +100,48 @@ class SaveSystem {
     );
 
     return _currentPlayer!;
+  }
+
+  Future<void> _applyIdleExp(String playerId, int exp) async {
+    try {
+      final profile = await _client
+          .from('raid_players')
+          .select()
+          .eq('player_id', playerId)
+          .eq('room_id', 'global_raid_room')
+          .maybeSingle();
+
+      if (profile == null) return;
+
+      final rawStats =
+          profile['stats'] as Map<String, dynamic>? ?? <String, dynamic>{};
+      final stats =
+          rawStats.map((key, value) => MapEntry(key.toString(), value));
+
+      int level = (stats['level'] as int?) ?? 1;
+      double currentExp =
+          (stats['exp'] as num?)?.toDouble() ?? 0;
+      double expToNext =
+          (stats['exp_to_next'] as num?)?.toDouble() ?? 100;
+
+      currentExp += exp;
+
+      while (currentExp >= expToNext) {
+        currentExp -= expToNext;
+        level += 1;
+        expToNext = (expToNext * 1.15).roundToDouble();
+      }
+
+      stats['level'] = level;
+      stats['exp'] = currentExp;
+      stats['exp_to_next'] = expToNext;
+
+      await _client
+          .from('raid_players')
+          .update({'stats': stats})
+          .eq('player_id', playerId)
+          .eq('room_id', 'global_raid_room');
+    } catch (_) {}
   }
 
   Future<bool> upgradeAccountPower() async {

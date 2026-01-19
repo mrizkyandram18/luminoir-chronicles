@@ -54,17 +54,19 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       _loading = false;
     });
 
-    // Show Idle Reward Dialog if applicable
     if (snapshot.idleGoldGained > 0) {
+      final idleExp = IdleRewardSystem.calculateIdleExpFromGold(
+        snapshot.idleGoldGained,
+      );
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
-          _showIdleRewardDialog(snapshot.idleGoldGained);
+          _showIdleRewardDialog(snapshot.idleGoldGained, idleExp);
         }
       });
     }
   }
 
-  void _showIdleRewardDialog(int amount) {
+  void _showIdleRewardDialog(int goldAmount, int expAmount) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -130,7 +132,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 36),
                     const SizedBox(width: 16),
                     Text(
-                      '+$amount Gold',
+                      '+$goldAmount Gold',
                       style: GoogleFonts.cinzel(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -140,6 +142,18 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ],
                 ),
               ),
+              if (expAmount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    '+$expAmount XP',
+                    style: GoogleFonts.crimsonText(
+                      fontSize: 18,
+                      color: const Color(0xFFE0D8C8),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

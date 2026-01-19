@@ -68,5 +68,16 @@ void main() {
 
       expect(gold, closeTo(32128, 5)); 
     });
+
+    test('calculateIdleExpFromGold should return 0 for non-positive gold', () {
+      expect(IdleRewardSystem.calculateIdleExpFromGold(0), 0);
+      expect(IdleRewardSystem.calculateIdleExpFromGold(-100), 0);
+    });
+
+    test('calculateIdleExpFromGold should scale linearly with gold', () {
+      expect(IdleRewardSystem.calculateIdleExpFromGold(10), 1);
+      expect(IdleRewardSystem.calculateIdleExpFromGold(95), 10);
+      expect(IdleRewardSystem.calculateIdleExpFromGold(105), 11);
+    });
   });
 }

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 class IdleRewardSystem {
-  // Max idle time increased to 24 hours
   static const int maxIdleSeconds = 24 * 3600;
 
   int calculateIdleGold({
@@ -15,13 +14,13 @@ class IdleRewardSystem {
     final effectiveSeconds =
         idleSeconds > maxIdleSeconds ? maxIdleSeconds : idleSeconds;
 
-    // Gold per second based on Stage progression
-    // Formula: Base 1 Gold + (Stage^1.2) * 0.5
-    // Stage 1: ~1.5 Gold/sec
-    // Stage 10: ~8 Gold/sec
-    // Stage 100: ~125 Gold/sec
     final goldPerSecond = 1 + (math.pow(maxStage, 1.2) * 0.5);
 
     return (effectiveSeconds * goldPerSecond).round();
+  }
+
+  static int calculateIdleExpFromGold(int idleGold) {
+    if (idleGold <= 0) return 0;
+    return (idleGold / 10).round();
   }
 }
