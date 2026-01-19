@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/raid_player.dart';
 import '../models/raid_equipment.dart';
@@ -60,6 +61,34 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           _showIdleRewardDialog(snapshot.idleGoldGained);
         }
       });
+    }
+  }
+
+  Future<void> _debugSimulate24hIdle() async {
+    setState(() => _loading = true);
+
+    final client = Supabase.instance.client;
+    final now = DateTime.now().toUtc();
+    final simulatedLastLogin = now.subtract(const Duration(hours: 24));
+
+    try {
+      await client.from('players').update({
+        'last_login': simulatedLastLogin.toIso8601String(),
+      }).eq('id', widget.childId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('QA: Simulated 24h idle time. Reloading...')),
+        );
+        await _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error simulating idle: $e')),
+        );
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -205,6 +234,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: _debugSimulate24hIdle,
+        backgroundColor: Colors.redAccent,
+        tooltip: 'QA: Simulate 24h Idle',
+        child: const Icon(Icons.history_toggle_off, color: Colors.white),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
