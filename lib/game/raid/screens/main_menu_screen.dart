@@ -72,31 +72,36 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2D241E), // Dark Wood/Leather color
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFC5A059), // Muted Gold
-              width: 3,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF000000).withValues(alpha: 0.5),
-                blurRadius: 15,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Decorative header element (text-based for now)
-                Text(
-                '⚜️ WELCOME BACK ⚜️',
+        insetPadding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D241E), // Dark Wood/Leather color
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFC5A059), // Muted Gold
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF000000).withValues(alpha: 0.5),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Decorative header element (text-based for now)
+                      Text(
+                        '⚜️ WELCOME BACK ⚜️',
                 style: GoogleFonts.cinzel(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -179,11 +184,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     ),
                   ),
                 ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFFC5A059)),
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Close',
+                ),
               ),
             ],
           ),
         ),
-      ),
       ),
     );
   }
@@ -201,19 +218,24 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         builder: (context, setDialogState) {
           return Dialog(
             backgroundColor: Colors.transparent,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2D241E), // Dark Wood
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFC5A059), width: 2),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                    'POWER UPGRADE',
+            insetPadding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2D241E), // Dark Wood
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFC5A059), width: 2),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'POWER UPGRADE',
                     style: GoogleFonts.cinzel(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -289,8 +311,20 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ),
             ),
           ),
-          );
-        },
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Color(0xFFC5A059)),
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Close',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+},
       ),
     );
   }
