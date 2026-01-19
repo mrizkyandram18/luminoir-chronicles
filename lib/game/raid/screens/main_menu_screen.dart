@@ -90,11 +90,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Decorative header element (text-based for now)
-              Text(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Decorative header element (text-based for now)
+                Text(
                 '⚜️ WELCOME BACK ⚜️',
                 style: GoogleFonts.cinzel(
                   fontSize: 22,
@@ -183,6 +184,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -206,10 +208,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFC5A059), width: 2),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
                     'POWER UPGRADE',
                     style: GoogleFonts.cinzel(
                       fontSize: 22,
@@ -285,6 +288,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 ],
               ),
             ),
+          ),
           );
         },
       ),
