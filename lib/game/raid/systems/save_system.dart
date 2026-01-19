@@ -71,7 +71,7 @@ class SaveSystem {
 
     final idleGold = idleRewardSystem.calculateIdleGold(
       lastLogin: lastLogin,
-      accountPowerMultiplier: accountPowerMultiplier,
+      maxStage: maxStage, // Pass maxStage for better scaling
       now: now,
     );
 

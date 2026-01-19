@@ -1,13 +1,18 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/components.dart';
 import 'package:flame/widgets.dart';
+import 'package:flame/game.dart';
+import 'package:flame/effects.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../services/supabase_service.dart';
 import '../models/raid_player.dart';
+import '../models/combat_archetypes.dart';
 
 class SummonScreen extends StatefulWidget {
   final String childId;
@@ -133,24 +138,28 @@ class _SummonScreenState extends State<SummonScreen> {
         }
 
         final itemCode = first['item_code']?.toString() ?? 'Summoned Hero';
-        final rarity = first['rarity']?.toString() ?? 'common';
+        final rarityString = first['rarity']?.toString() ?? 'common';
+        final rarity = HeroRarity.values.firstWhere(
+          (e) => e.name == rarityString,
+          orElse: () => HeroRarity.common,
+        );
 
         int baseAttack;
         int baseHp;
         switch (rarity) {
-          case 'legendary':
+          case HeroRarity.legendary:
             baseAttack = 50;
             baseHp = 300;
             break;
-          case 'epic':
+          case HeroRarity.epic:
             baseAttack = 30;
             baseHp = 220;
             break;
-          case 'rare':
+          case HeroRarity.rare:
             baseAttack = 15;
             baseHp = 180;
             break;
-          default:
+          case HeroRarity.common:
             baseAttack = 5;
             baseHp = 150;
             break;
@@ -158,15 +167,20 @@ class _SummonScreenState extends State<SummonScreen> {
         final attack = baseAttack + level * 2;
         final hp = baseHp + level * 10;
 
+        final factions = Faction.values;
+        final random = Random();
+        final faction = factions[random.nextInt(factions.length)];
+
         await supabase.addPartyMember(
           playerId: widget.childId,
           hero: {
             'name': itemCode,
             'job': job,
             'level': level,
-            'rarity': rarity,
+            'rarity': rarity.name,
             'attack': attack,
             'hp': hp,
+            'faction': faction.name,
           },
         );
       }
@@ -199,66 +213,98 @@ class _SummonScreenState extends State<SummonScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: Colors.cyanAccent),
             )
-          : Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Gold: $_gold',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 20,
-                      color: Colors.amberAccent,
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmallHeight = constraints.maxHeight < 420;
+
+                final content = Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Gold: $_gold',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 20,
+                            color: Colors.amberAccent,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _freeAvailable && !_summoning
+                              ? () => _performSummon(free: true)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.cyanAccent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: Text(
+                            _freeAvailable
+                                ? 'Free Summon (1x/hari)'
+                                : 'Free Summon sudah dipakai',
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: !_summoning
+                              ? () => _performSummon(free: false)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purpleAccent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: const Text('Summon 1x (1000 gold)'),
+                        ),
+                        const SizedBox(height: 32),
+                        if (_lastResult != null)
+                          _SummonResultCard(result: _lastResult!),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed:
-                        _freeAvailable && !_summoning ? () => _performSummon(free: true) : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: Text(
-                      _freeAvailable ? 'Free Summon (1x/hari)' : 'Free Summon sudah dipakai',
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: !_summoning ? () => _performSummon(free: false) : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purpleAccent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: const Text('Summon 1x (1000 gold)'),
-                  ),
-                  const SizedBox(height: 32),
-                  if (_lastResult != null)
-                    _SummonResultCard(result: _lastResult!),
-                ],
-              ),
+                );
+
+                if (isSmallHeight) {
+                  return SingleChildScrollView(child: content);
+                }
+                return content;
+              },
             ),
     );
   }
 }
 
-class _SummonResultCard extends StatelessWidget {
+class _SummonResultCard extends StatefulWidget {
   final Map<String, dynamic> result;
 
   const _SummonResultCard({required this.result});
 
   @override
+  State<_SummonResultCard> createState() => _SummonResultCardState();
+}
+
+class _SummonResultCardState extends State<_SummonResultCard> {
+  late final SummonEffectGame _game;
+
+  @override
+  void initState() {
+    super.initState();
+    _game = SummonEffectGame();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final itemCode = result['item_code']?.toString() ?? 'Unknown';
-    final rarity = result['rarity']?.toString() ?? 'common';
+    final itemCode = widget.result['item_code']?.toString() ?? 'Unknown';
+    final rarity = widget.result['rarity']?.toString() ?? 'common';
     final rarityColor = _rarityColor(rarity);
-    final jobName = result['job']?.toString() ?? 'warrior';
+    final jobName = widget.result['job']?.toString() ?? 'warrior';
     final job = PlayerJob.values.firstWhere(
       (e) => e.name == jobName,
       orElse: () => PlayerJob.warrior,
@@ -275,9 +321,21 @@ class _SummonResultCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 64,
-            height: 64,
-            child: _HeroSprite(job: job),
+            width: 96,
+            height: 96,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                GameWidget(
+                  game: _game,
+                ),
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: _HeroSprite(job: job),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -385,5 +443,69 @@ Future<bool> _spriteExists(String relativePath) async {
     return true;
   } catch (_) {
     return false;
+  }
+}
+
+class SummonEffectGame extends FlameGame {
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    final center = size / 2;
+
+    final outerRing = CircleComponent(
+      radius: 32,
+      paint: Paint()
+        ..color = Colors.cyanAccent.withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+      position: center,
+      anchor: Anchor.center,
+    );
+
+    outerRing.add(
+      ScaleEffect.to(
+        Vector2.all(1.3),
+        EffectController(
+          duration: 0.6,
+          alternate: true,
+          infinite: true,
+        ),
+      ),
+    );
+
+    outerRing.add(
+      OpacityEffect.to(
+        0.1,
+        EffectController(
+          duration: 0.6,
+          alternate: true,
+          infinite: true,
+        ),
+      ),
+    );
+
+    final innerGlow = CircleComponent(
+      radius: 18,
+      paint: Paint()
+        ..color = Colors.purpleAccent.withValues(alpha: 0.4)
+        ..style = PaintingStyle.fill,
+      position: center,
+      anchor: Anchor.center,
+    );
+
+    innerGlow.add(
+      ScaleEffect.to(
+        Vector2.all(0.8),
+        EffectController(
+          duration: 0.6,
+          alternate: true,
+          infinite: true,
+        ),
+      ),
+    );
+
+    add(outerRing);
+    add(innerGlow);
   }
 }

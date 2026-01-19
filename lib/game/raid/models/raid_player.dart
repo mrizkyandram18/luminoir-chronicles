@@ -1,5 +1,7 @@
 import 'raid_equipment.dart';
 
+enum HeroRarity { common, rare, epic, legendary }
+
 enum PlayerJob { warrior, mage, archer, assassin }
 
 enum RaidStat { attack, attackSpeed, critChance }
@@ -99,11 +101,11 @@ class RaidPlayer {
   void _levelUp() {
     currentExp -= expToNextLevel;
     level++;
-    expToNextLevel *= 1.2; // Curve
+    expToNextLevel = (expToNextLevel * 1.15).roundToDouble(); // Slightly slower xp curve
 
-    // Stat Growth
-    attack *= 1.1;
-    maxHp *= 1.1;
+    // Stat Growth - Linear instead of Exponential to prevent runaway power
+    attack += 2.5; 
+    maxHp += 25;
     currentHp = maxHp; // Full Heal
   }
 

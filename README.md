@@ -3,16 +3,12 @@
 Multiplayer idle RPG raid prototype built with Flutter and Flame.
 
 Fokus project ini sekarang sudah tidak lagi di papan monopoli dan dadu,
-tetapi ke **raid boss RPG** dengan sistem Gatekeeper untuk anak.
+tetapi ke **raid boss RPG** dengan loop idle dan sistem stage/boss.
 
 ## 🎮 Overview
 
-- Masuk lewat **Setup Screen** dengan `User ID` anak.
-- **GatekeeperService** cek:
-  - apakah anak di-whitelist,
-  - apakah layanan **Child Agent** dari orang tua sedang online,
-  - kalau tidak aktif, user dibawa ke **AccessDeniedScreen**.
-- Kalau semua aman, anak diarahkan ke:
+- Masuk lewat **Setup Screen** dengan sebuah ID.
+- Setelah login, pemain diarahkan ke:
   - **Character Select** → pilih job,
   - **Main Menu** → masuk raid, summon, dan fitur meta lain.
 
@@ -51,13 +47,13 @@ Game loop utama saat ini:
 
 ## 🧭 Meta & UI
 
-- **SetupScreen**: login dengan background ilustrasi dunia Luminoir.
+- **SetupScreen**: layar login dengan background ilustrasi dunia Luminoir.
 - **MainMenuScreen**:
   - Tombol ke Raid, Summon, Ninja, dan fitur placeholder lain.
   - Sidebar kiri: Leaderboard, Friends, Mailbox (masih placeholder).
   - Sidebar kanan: Store, Fusing, World (roadmap fitur).
-- **AccessDeniedScreen**:
-  - Menjelaskan kenapa anak tidak boleh masuk (Child Agent offline, dll).
+- **Layar penolakan akses**:
+-  - Menjelaskan kenapa akses game ditolak.
 
 ## 🛠️ Tech Stack
 
@@ -65,7 +61,7 @@ Game loop utama saat ini:
 - **Game Engine**: Flame
 - **Backend**:
   - Supabase (game state, profile pemain)
-  - Firebase Firestore (Gatekeeper / Child Agent status)
+  - Firebase Firestore (metadata akses dan status keamanan)
 - **State Management**: Provider (`ChangeNotifier`)
 - **Navigation**: GoRouter
 - **Styling**: Google Fonts
@@ -91,10 +87,10 @@ Game loop utama saat ini:
 ## 📂 Project Structure (Ringkas)
 
 - `lib/main.dart` – entry point dan routing (Splash → Setup → Raid).
-- `lib/gatekeeper/` – GatekeeperService, SetupScreen, AccessDeniedScreen.
+- `lib/gatekeeper/` – modul akses dan login, termasuk layar penolakan akses.
 - `lib/game/raid/` – RaidGame, models, systems, dan UI raid.
 - `lib/services/` – SupabaseService dan integrasi backend lain.
-- `test/` – unit test untuk gatekeeper, identity, dan raid archetypes.
+- `test/` – unit test untuk sistem identitas dan raid archetypes.
 
 ## 🔗 Links
 

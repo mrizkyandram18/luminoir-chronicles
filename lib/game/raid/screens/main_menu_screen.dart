@@ -7,6 +7,8 @@ import '../models/raid_player.dart';
 import '../models/raid_equipment.dart';
 import '../widgets/inventory_widget.dart';
 import '../systems/equipment_system.dart';
+import '../systems/save_system.dart';
+import '../systems/idle_system.dart';
 import '../../../services/supabase_service.dart';
 
 class MainMenuScreen extends StatefulWidget {
@@ -37,12 +39,136 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
   Future<void> _loadProfile() async {
     final supabase = context.read<SupabaseService>();
+
+    // Process Idle Rewards before loading profile
+    final idleSystem = IdleRewardSystem();
+    final saveSystem = SaveSystem(idleRewardSystem: idleSystem);
+    final snapshot = await saveSystem.loadOrCreatePlayer(widget.childId);
+
     final data = await supabase.getPlayerProfile(widget.childId);
     if (!mounted) return;
+
     setState(() {
       _profile = data;
       _loading = false;
     });
+
+    // Show Idle Reward Dialog if applicable
+    if (snapshot.idleGoldGained > 0) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _showIdleRewardDialog(snapshot.idleGoldGained);
+        }
+      });
+    }
+  }
+
+  void _showIdleRewardDialog(int amount) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D241E), // Dark Wood/Leather color
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFC5A059), // Muted Gold
+              width: 3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF000000).withValues(alpha: 0.5),
+                blurRadius: 15,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Decorative header element (text-based for now)
+              Text(
+                '⚜️ WELCOME BACK ⚜️',
+                style: GoogleFonts.cinzel(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFC5A059), // Gold
+                  letterSpacing: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Divider(color: const Color(0xFFC5A059).withValues(alpha: 0.3), thickness: 1),
+              const SizedBox(height: 16),
+              Text(
+                'While you were resting, your party gathered spoils:',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.crimsonText(
+                  fontSize: 16,
+                  color: const Color(0xFFE0D8C8), // Parchment White
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1512), // Darker inset
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF5D4037),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.monetization_on, color: Color(0xFFFFD700), size: 36),
+                    const SizedBox(width: 16),
+                    Text(
+                      '+$amount Gold',
+                      style: GoogleFonts.cinzel(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFFFD700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B0000), // Deep Red
+                    foregroundColor: const Color(0xFFFFD700), // Gold text
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 4,
+                    side: const BorderSide(color: Color(0xFFC5A059), width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'CLAIM SPOILS',
+                    style: GoogleFonts.cinzel(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -74,6 +200,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       baseName: name,
       baseLevel: level,
     );
+    final activeJob =
+        partySlots.isNotEmpty && partySlots[0].unlocked ? partySlots[0].job : job;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -317,7 +445,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                                 '/raid',
                                 extra: {
                                   'childId': widget.childId,
-                                  'job': job,
+                                  'job': activeJob,
                                 },
                               );
                             },
@@ -387,6 +515,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     return slots;
   }
 
+  Future<void> _setActiveSlot(int slotIndex) async {
+    final supabase = context.read<SupabaseService>();
+    await supabase.swapPartySlots(
+      playerId: widget.childId,
+      fromSlot: slotIndex,
+      toSlot: 0,
+    );
+    await _loadProfile();
+  }
+
   Widget _buildPartyGrid(
     List<_HeroSlotData> slots, {
     required bool compact,
@@ -404,8 +542,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             children: List.generate(columns, (col) {
               final index = row * columns + col;
               final slot = slots[index];
+              final isActive = index == 0 && slot.unlocked;
               return Expanded(
-                child: _heroSlot(slot, compact),
+                child: GestureDetector(
+                  onTap: slot.unlocked ? () => _setActiveSlot(index) : null,
+                  child: _heroSlot(
+                    slot,
+                    compact,
+                    isActive: isActive,
+                  ),
+                ),
               );
             }),
           ),
@@ -414,7 +560,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  Widget _heroSlot(_HeroSlotData slot, bool compact) {
+  Widget _heroSlot(
+    _HeroSlotData slot,
+    bool compact, {
+    required bool isActive,
+  }) {
     final locked = !slot.unlocked;
     Color color;
     switch (slot.job) {
@@ -476,7 +626,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: locked ? Colors.grey : color,
+                  color: locked
+                      ? Colors.grey
+                      : (isActive ? Colors.cyanAccent : color),
                   width: 2,
                 ),
               ),
@@ -584,7 +736,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               color: Colors.black.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: locked ? Colors.grey : color,
+                color: locked
+                    ? Colors.grey
+                    : (isActive ? Colors.cyanAccent : color),
                 width: 2,
               ),
             ),
