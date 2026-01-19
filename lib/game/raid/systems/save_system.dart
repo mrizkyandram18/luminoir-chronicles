@@ -95,6 +95,54 @@ class SaveSystem {
     return _currentPlayer!;
   }
 
+  Future<bool> upgradeAccountPower() async {
+    if (_currentPlayer == null) return false;
+
+    // Cost Formula: 100 * (1.5 ^ (Level - 1))
+    // Level 1 -> 100 Gold
+    // Level 2 -> 150 Gold
+    // Level 10 -> ~3800 Gold
+    final currentLevel = _currentPlayer!.accountPowerMultiplier;
+    final cost = (100 * (matchPow(1.5, currentLevel - 1))).round();
+
+    if (_currentPlayer!.gold < cost) {
+      return false;
+    }
+
+    final newGold = _currentPlayer!.gold - cost;
+    final newLevel = currentLevel + 1;
+
+    try {
+      await _client.from('players').update({
+        'gold': newGold,
+        'account_power_multiplier': newLevel,
+      }).eq('id', _currentPlayer!.id);
+
+      // Update local snapshot
+      _currentPlayer!.gold = newGold;
+      _currentPlayer!.accountPowerMultiplier = newLevel;
+      return true;
+    } catch (e) {
+      // Handle error (e.g., network)
+      return false;
+    }
+  }
+
+  int getNextUpgradeCost() {
+    if (_currentPlayer == null) return 0;
+    final currentLevel = _currentPlayer!.accountPowerMultiplier;
+    return (100 * (matchPow(1.5, currentLevel - 1))).round();
+  }
+
+  // Helper for pow since dart:math isn't imported
+  double matchPow(double x, int exponent) {
+    double result = 1.0;
+    for (int i = 0; i < exponent; i++) {
+      result *= x;
+    }
+    return result;
+  }
+
   void update(double dt) {
     if (_currentPlayer == null) return;
 

@@ -69,6 +69,13 @@ class RaidGame extends FlameGame {
 
     myPlayer.gold = snapshot.gold;
 
+    // Apply Account Power Multiplier (Base Stats * Multiplier)
+    // Example: Level 1 -> 1.0x, Level 2 -> 1.1x, Level 10 -> 1.9x
+    final multiplier = 1.0 + ((snapshot.accountPowerMultiplier - 1) * 0.1);
+    myPlayer.attack *= multiplier;
+    myPlayer.maxHp *= multiplier;
+    myPlayer.currentHp = myPlayer.maxHp;
+
     await _applyPartyBonuses();
 
     campaignSystem.startWave(1);

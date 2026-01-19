@@ -24,10 +24,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   Map<String, dynamic>? _profile;
   bool _loading = true;
   final TextEditingController _chatController = TextEditingController();
+  late SaveSystem _saveSystem;
 
   @override
   void initState() {
     super.initState();
+    final idleSystem = IdleRewardSystem();
+    _saveSystem = SaveSystem(idleRewardSystem: idleSystem);
     _loadProfile();
   }
 
@@ -41,9 +44,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final supabase = context.read<SupabaseService>();
 
     // Process Idle Rewards before loading profile
-    final idleSystem = IdleRewardSystem();
-    final saveSystem = SaveSystem(idleRewardSystem: idleSystem);
-    final snapshot = await saveSystem.loadOrCreatePlayer(widget.childId);
+    final snapshot = await _saveSystem.loadOrCreatePlayer(widget.childId);
 
     final data = await supabase.getPlayerProfile(widget.childId);
     if (!mounted) return;
@@ -171,6 +172,111 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
+  void _showUpgradeDialog() {
+    final snapshot = _saveSystem.currentPlayer;
+    if (snapshot == null) return;
+
+    final cost = _saveSystem.getNextUpgradeCost();
+    final currentLevel = snapshot.accountPowerMultiplier;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D241E), // Dark Wood
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC5A059), width: 2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'POWER UPGRADE',
+                    style: GoogleFonts.cinzel(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFC5A059),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Current Power Level: $currentLevel',
+                    style: GoogleFonts.crimsonText(
+                      fontSize: 18,
+                      color: const Color(0xFFE0D8C8),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Effect: All Stats x${1.0 + ((currentLevel - 1) * 0.1)}',
+                    style: GoogleFonts.crimsonText(
+                      fontSize: 14,
+                      color: Colors.white70,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.monetization_on, color: Color(0xFFFFD700)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$cost Gold',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: snapshot.gold >= cost ? const Color(0xFFFFD700) : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: snapshot.gold >= cost
+                          ? () async {
+                              final success = await _saveSystem.upgradeAccountPower();
+                              if (success) {
+                                if (mounted) {
+                                  // Refresh main UI
+                                  setState(() {});
+                                  // Refresh dialog UI
+                                  setDialogState(() {});
+                                }
+                              }
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B0000),
+                        disabledBackgroundColor: Colors.grey.shade800,
+                        foregroundColor: const Color(0xFFFFD700),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: const BorderSide(color: Color(0xFFC5A059)),
+                      ),
+                      child: Text(
+                        'UPGRADE',
+                        style: GoogleFonts.cinzel(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     PlayerJob job = PlayerJob.warrior;
@@ -190,7 +296,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       );
       name = (_profile!['name'] ?? stats?['name'] ?? 'Agent') as String;
       level = (_profile!['level'] ?? stats?['level'] ?? 1) as int;
-      gold = (stats?['gold'] as int?) ?? 0;
+      // Prefer SaveSystem gold if available (single source of truth for idle/upgrades)
+      if (_saveSystem.currentPlayer != null) {
+        gold = _saveSystem.currentPlayer!.gold;
+      } else {
+        gold = (stats?['gold'] as int?) ?? 0;
+      }
       gems = (stats?['gems'] as int?) ?? 0;
     }
 
@@ -295,6 +406,39 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                                       ),
                                     ],
                                   ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _showUpgradeDialog,
+                            child: Container(
+                              padding: EdgeInsets.all(isCompact ? 4 : 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF8B0000).withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFC5A059),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.arrow_upward,
+                                    color: Color(0xFFFFD700),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'UPGRADE',
+                                    style: GoogleFonts.cinzel(
+                                      fontSize: isCompact ? 10 : 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFFFD700),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
                                 ],
                               ),
                             ),
